@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>太陽城 行軍時間マップ</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #1a1a2e;
+    font-family: 'Segoe UI', sans-serif;
+    color: #e8e0d0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 10px;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+    letter-spacing: 0.15em;
+    color: #f0c040;
+    margin-bottom: 6px;
+    text-shadow: 0 0 12px #f0c04066;
+  }
+
+  .subtitle {
+    font-size: 0.75rem;
+    color: #888;
+    margin-bottom: 16px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ===== MODE SWITCHER ===== */
+  .mode-switcher {
+    display: flex;
+    gap: 0;
+    margin-bottom: 18px;
+    border: 1px solid #2a2a4a;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .mode-switcher button {
+    padding: 8px 28px;
+    border: none;
+    background: #12122a;
+    color: #666;
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .mode-switcher button.active-test {
+    background: #1a3a5a;
+    color: #4a90d9;
+    font-weight: 700;
+  }
+  .mode-switcher button.active-battle {
+    background: #3a1a0a;
+    color: #e85d2a;
+    font-weight: 700;
+  }
+  .mode-switcher button:hover:not(.active-test):not(.active-battle) {
+    background: #1e1e36;
+    color: #aaa;
+  }
+
+  /* ===== INFO PANEL ===== */
+  .info-header-bar {
+    width: 100%;
+    max-width: 760px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .info-panel {
+    width: 100%;
+    max-width: 760px;
+    background: #12122a;
+    border: 1px solid #2a2a4a;
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px 16px;
+  }
+  .info-field { display: flex; flex-direction: column; gap: 4px; }
+  .info-label { font-size: 0.65rem; color: #888; letter-spacing: 0.08em; text-transform: uppercase; }
+  .info-input {
+    background: #1a1a36;
+    border: 1px solid #2a2a4a;
+    border-radius: 3px;
+    color: #e8e0d0;
+    font-size: 0.82rem;
+    padding: 5px 8px;
+    outline: none;
+    font-family: 'Segoe UI', sans-serif;
+    transition: border-color 0.15s;
+  }
+  .info-input:focus { border-color: #f0c040; }
+  .info-input::placeholder { color: #3a3a5a; }
+
+  /* ===== SUMMARY BAR ===== */
+  .summary-bar {
+    width: 100%;
+    max-width: 760px;
+    background: #0e0e20;
+    border: 1px solid #1a1a3a;
+    border-radius: 4px;
+    padding: 8px 14px;
+    margin-bottom: 12px;
+    font-size: 0.78rem;
+    color: #aaa;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    letter-spacing: 0.04em;
+  }
+  .summary-bar .s-item { color: #e8e0d0; }
+  .summary-bar .s-sep { color: #3a3a5a; }
+  .summary-bar .s-label { color: #666; }
+
+  /* ===== TEST MODE CONTROLS ===== */
+  .test-controls { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 14px; }
+  .legend {
+    display: flex;
+    gap: 16px;
+    font-size: 0.72rem;
+    color: #aaa;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-normal { background: #4a90d9; }
+  .dot-boost { background: #e85d2a; }
+
+  .toggle-btn {
+    padding: 9px 28px;
+    border: 2px solid #f0c040;
+    background: transparent;
+    color: #f0c040;
+    font-size: 0.82rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background 0.2s, color 0.2s;
+  }
+  .toggle-btn:hover { background: #f0c040; color: #1a1000; }
+  .toggle-btn.active-boost { background: #e85d2a; border-color: #e85d2a; color: #fff; }
+  .toggle-btn.active-normal { background: transparent; border-color: #4a90d9; color: #4a90d9; }
+  .mode-label { font-size: 0.72rem; color: #666; }
+  .mode-label span { color: #f0c040; font-weight: 600; }
+
+  /* ===== BATTLE MODE CONTROLS ===== */
+  .battle-controls { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 14px; width: 100%; max-width: 760px; }
+
+  .battle-start-btn {
+    padding: 11px 36px;
+    border: 2px solid #e85d2a;
+    background: transparent;
+    color: #e85d2a;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background 0.2s, color 0.2s;
+  }
+  .battle-start-btn:hover { background: #e85d2a; color: #fff; }
+  .battle-start-btn.running { background: #e85d2a; color: #fff; cursor: default; }
+
+  .battle-stop-btn {
+    padding: 11px 20px;
+    border: 2px solid #555;
+    background: transparent;
+    color: #888;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+  }
+  .battle-stop-btn:hover { background: #2a2a2a; border-color: #888; color: #ccc; }
+
+  /* Timeline bar */
+  .timeline-wrap {
+    width: 100%;
+    background: #0e0e20;
+    border: 1px solid #2a2a4a;
+    border-radius: 4px;
+    padding: 10px 14px;
+  }
+  .timeline-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.68rem;
+    color: #666;
+    margin-bottom: 6px;
+  }
+  .timeline-bar-outer {
+    width: 100%;
+    height: 10px;
+    background: #1a1a36;
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .timeline-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, #e85d2a, #f0c040);
+    border-radius: 5px;
+    transition: width 1s linear;
+    width: 0%;
+  }
+  .timeline-clocks {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 0.7rem;
+    color: #888;
+  }
+  .timeline-now { color: #f0c040; font-weight: 700; }
+
+  /* Pet skill legend */
+  .pet-legend {
+    display: flex;
+    gap: 14px;
+    font-size: 0.7rem;
+    color: #aaa;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .pet-legend span { display: flex; align-items: center; gap: 5px; }
+  .dot-none    { background: #2a2a4a; }
+  .dot-active  { background: #2ecc71; }
+  .dot-expired { background: #555; }
+
+  /* ===== 連撃管理 ===== */
+  .renngeki-wrap { width: 100%; max-width: 760px; margin-top: 16px; }
+  .renngeki-select-btn {
+    padding: 9px 22px;
+    border: 2px solid #a855f7;
+    background: transparent;
+    color: #a855f7;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background 0.2s, color 0.2s;
+  }
+  .renngeki-select-btn:hover { background: #a855f7; color: #fff; }
+  .renngeki-select-btn.selecting { background: #a855f7; color: #fff; }
+  .renngeki-hint { font-size: 0.7rem; color: #a855f7; text-align: center; padding: 4px 0; }
+  .renngeki-confirm-row { display: flex; gap: 8px; justify-content: center; margin-top: 4px; }
+  .renngeki-confirm-btn { padding: 7px 20px; border: 1px solid #a855f7; background: #a855f7; color: #fff; font-size: 0.8rem; font-weight: 700; cursor: pointer; border-radius: 2px; }
+  .renngeki-cancel-btn  { padding: 7px 20px; border: 1px solid #555; background: transparent; color: #888; font-size: 0.8rem; cursor: pointer; border-radius: 2px; }
+  .renngeki-set { background: #12122a; border: 1px solid #3a1a5a; border-radius: 6px; padding: 12px 14px; margin-bottom: 10px; }
+  .renngeki-set-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .renngeki-set-title { font-size: 0.8rem; font-weight: 700; color: #a855f7; letter-spacing: 0.08em; }
+  .renngeki-delete-btn { font-size: 0.65rem; color: #555; background: none; border: none; cursor: pointer; padding: 2px 6px; }
+  .renngeki-delete-btn:hover { color: #e85d2a; }
+  .renngeki-row { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-bottom: 1px solid #1e1e36; }
+  .renngeki-row:last-of-type { border-bottom: none; }
+  .renngeki-rank { width: 20px; font-size: 0.7rem; color: #555; flex-shrink: 0; text-align: right; font-weight: 700; }
+  .renngeki-name { color: #e8e0d0; flex: 1; font-weight: 700; font-size: 0.9rem; }
+  .renngeki-time { font-size: 0.82rem; font-weight: 700; width: 54px; text-align: right; flex-shrink: 0; color: #4a90d9; }
+  .renngeki-time.boost-t { color: #2ecc71; }
+  .renngeki-delay {
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    padding: 3px 10px;
+    border-radius: 99px;
+    background: #2a1a00;
+    color: #f0c040;
+    border: 1px solid #6a4a00;
+    white-space: nowrap;
+  }
+  .renngeki-delay.anchor {
+    background: #1a1a2a;
+    color: #888;
+    border-color: #3a3a5a;
+    font-style: normal;
+  }
+  .renngeki-text-box { margin-top: 10px; background: #0e0e20; border: 1px solid #2a2a4a; border-radius: 3px; padding: 8px 10px; font-size: 0.72rem; color: #c8bfa8; white-space: pre-wrap; font-family: 'Courier New', monospace; line-height: 1.6; }
+  .renngeki-copy-btn { margin-top: 6px; padding: 5px 16px; border: 1px solid #2a2a4a; background: transparent; color: #888; font-size: 0.72rem; cursor: pointer; border-radius: 2px; transition: border-color 0.2s, color 0.2s; }
+  .renngeki-copy-btn:hover { border-color: #f0c040; color: #f0c040; }
+  .renngeki-copy-btn.copied { border-color: #2ecc71; color: #2ecc71; }
+  td.cell.rng-selecting { outline: 2px solid #a855f7; outline-offset: -2px; cursor: crosshair; }
+  td.cell.rng-selected  { outline: 3px solid #f0c040; outline-offset: -2px; background: #1a0a2a !important; }
+
+  /* ===== カウンターオーバーレイ ===== */
+  .counter-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 10, 20, 0.94);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    gap: 24px;
+  }
+  .counter-set-title {
+    font-size: 1rem;
+    color: #a855f7;
+    letter-spacing: 0.15em;
+    font-weight: 700;
+  }
+  .counter-number {
+    font-size: 10rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    transition: color 0.15s;
+    text-shadow: 0 0 60px currentColor;
+    min-width: 3ch;
+    text-align: center;
+  }
+  .counter-number.phase-down { color: #e85d2a; }
+  .counter-number.phase-zero { color: #f0c040; transform: scale(1.15); }
+  .counter-number.phase-up   { color: #2ecc71; }
+
+  .counter-members {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+  .counter-member {
+    font-size: 1rem;
+    color: #888;
+    letter-spacing: 0.05em;
+    transition: color 0.2s, font-size 0.2s, text-shadow 0.2s;
+    padding: 2px 0;
+  }
+  .counter-member.now {
+    color: #f0c040;
+    font-size: 1.5rem;
+    font-weight: 900;
+    text-shadow: 0 0 20px #f0c040aa;
+  }
+  .counter-member.done {
+    color: #2ecc71;
+    text-decoration: line-through;
+    opacity: 0.5;
+  }
+  .counter-stop-btn {
+    margin-top: 8px;
+    padding: 10px 32px;
+    border: 2px solid #555;
+    background: transparent;
+    color: #666;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .counter-stop-btn:hover { border-color: #e85d2a; color: #e85d2a; }
+
+  /* ===== GRID ===== */
+  .grid-wrapper {
+    overflow-x: auto;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  table { border-collapse: collapse; background: #12122a; }
+
+  td {
+    width: 52px;
+    height: 52px;
+    border: 1px solid #2a2a4a;
+    position: relative;
+    vertical-align: middle;
+    text-align: center;
+    font-size: 0.68rem;
+  }
+  td.empty { background: #0e0e20; }
+  td.col-label { color: #888; font-size: 0.7rem; font-weight: 600; background: #0e0e20; border: 1px solid #1a1a3a; }
+  td.gate { background: #2a2a3a; color: #c8b860; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; border: 1px solid #4a4a6a; }
+  td.inner { background: #1e1e36; border-color: #2a2a4a; }
+  td.city { background: #f0c040; color: #1a1000; font-weight: 900; font-size: 0.9rem; letter-spacing: 0.05em; border: 2px solid #c89000; }
+
+  td.cell { cursor: pointer; transition: background 0.15s; }
+  td.cell:hover { background: #22224a; }
+
+  /* ペットスキル状態による背景色 */
+  td.cell.pet-active  { background: #0a2a18; border-color: #2ecc71; }
+  td.cell.pet-active:hover { background: #0e3320; }
+  td.cell.pet-expired { background: #1e1e1e; border-color: #444; }
+  td.cell.pet-expired:hover { background: #252525; }
+
+  .time-val {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 1px;
+    transition: color 0.2s;
+  }
+  .time-val.normal  { color: #4a90d9; }
+  .time-val.boost   { color: #e85d2a; }
+
+  /* ペットスキルステータス表示 */
+  .pet-status {
+    display: block;
+    font-size: 0.58rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 1px;
+  }
+  .pet-status.s-none    { color: #3a3a5a; }
+  .pet-status.s-active  { color: #2ecc71; }
+  .pet-status.s-expired { color: #666; }
+
+  /* ペットスキル切れ残り時間 */
+  .pet-timer {
+    display: block;
+    font-size: 0.52rem;
+    color: #f0c040;
+    line-height: 1;
+    margin-bottom: 1px;
+  }
+
+  .player-input {
+    display: block;
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-top: 1px solid #2a2a4a;
+    color: #c8bfa8;
+    font-size: 0.55rem;
+    text-align: center;
+    padding: 1px 2px;
+    outline: none;
+    line-height: 1.2;
+  }
+  .player-input::placeholder { color: #3a3a5a; }
+  .player-input:focus { background: #1a1a3a; }
+
+  /* 決戦モードでは名前を読み取り専用表示 */
+  .player-display {
+    display: block;
+    width: 100%;
+    font-size: 0.55rem;
+    color: #c8bfa8;
+    text-align: center;
+    border-top: 1px solid #2a2a4a;
+    padding: 1px 2px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @media (max-width: 600px) {
+    td { width: 36px; height: 40px; font-size: 0.55rem; }
+    .time-val { font-size: 0.62rem; }
+    .player-input { font-size: 0.45rem; }
+    td.city { font-size: 0.65rem; }
+    td.gate { font-size: 0.65rem; }
+    .info-panel { grid-template-columns: 1fr 1fr; }
+    .pet-status { font-size: 0.48rem; }
+    .pet-timer { font-size: 0.44rem; }
+  }
+</style>
+</head>
+<body>
+
+<h1>太陽城 行軍時間マップ</h1>
+<p class="subtitle" id="appSubtitle">下書きモード：名前の入力・行軍時間の確認</p>
+
+<!-- モード切替 -->
+<div class="mode-switcher">
+  <button id="btnTest" class="active-test" onclick="switchAppMode('test')">📝 下書きモード</button>
+  <button id="btnBattle" onclick="switchAppMode('battle')">⚔ 決戦モード</button>
+</div>
+
+<!-- 決戦情報パネル -->
+<div class="info-header-bar">
+  <span style="font-size:0.65rem;color:#f0c040;letter-spacing:0.1em;">⚔ 決戦情報</span>
+  <hr style="flex:1;border:none;border-top:1px solid #2a2a4a;">
+</div>
+<div class="info-panel">
+  <div class="info-field">
+    <label class="info-label" for="allianceName">自サーバー番号</label>
+    <input class="info-input" id="allianceName" placeholder="例：2304" oninput="updateSummary()">
+  </div>
+  <div class="info-field">
+    <label class="info-label" for="enemyName">対戦相手</label>
+    <input class="info-input" id="enemyName" placeholder="例：鉄壁同盟" oninput="updateSummary()">
+  </div>
+  <div class="info-field">
+    <label class="info-label" for="battleDate">決戦日時（UTC）</label>
+    <input class="info-input" id="battleDate" type="datetime-local" oninput="updateSummary()">
+  </div>
+  <div class="info-field" style="grid-column: 1 / -1;">
+    <label class="info-label" for="webhookUrl">Discord Webhook URL <span style="color:#555;font-size:0.6rem;text-transform:none;">（このツール内にのみ保存されます）</span></label>
+    <input class="info-input" id="webhookUrl" placeholder="https://discord.com/api/webhooks/..." type="password" style="font-size:0.72rem;">
+  </div>
+</div>
+<div class="summary-bar" id="summaryBar">
+  <span style="color:#3a3a5a;font-size:0.75rem;">決戦情報を入力すると、ここに表示されます</span>
+</div>
+
+<!-- 下書きモードコントロール -->
+<div class="test-controls" id="testControls">
+  <div class="legend">
+    <span><span class="dot dot-normal"></span>ペットスキルなし（通常）</span>
+    <span><span class="dot dot-boost"></span>ペットスキルあり</span>
+  </div>
+  <button class="toggle-btn active-normal" id="globalToggle" onclick="toggleAll()">全マス切り替え</button>
+  <p class="mode-label" id="modeLabel">現在: <span>ペットスキルなし</span></p>
+  <p style="font-size:0.68rem;color:#666;margin-top:4px;">💡 ここで入力した各マスの名前は決戦モードにそのまま反映されます</p>
+</div>
+
+<!-- 決戦モードコントロール -->
+<div class="battle-controls" id="battleControls" style="display:none;">
+  <div class="pet-legend">
+    <span><span class="dot dot-none"></span>ペットスキルなし</span>
+    <span><span class="dot dot-active"></span>ペットスキルあり（2h）</span>
+    <span><span class="dot dot-expired"></span>ペットスキル使用済</span>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <button class="battle-start-btn" id="battleStartBtn" onclick="startBattle()">▶ 決戦開始</button>
+    <button class="battle-stop-btn" id="battleStopBtn" onclick="stopBattle()" style="display:none;">⏸ 止める</button>
+    <button class="renngeki-select-btn" id="renngekiBtn" onclick="toggleRenngekiSelect()">⚡ 連撃設定</button>
+  </div>
+  <div id="renngekiHint" style="display:none;">
+    <p class="renngeki-hint">マスを複数タップして選択 → 「この組み合わせで連撃」で確定</p>
+    <div class="renngeki-confirm-row">
+      <button class="renngeki-confirm-btn" onclick="confirmRenngeki()">この組み合わせで連撃</button>
+      <button class="renngeki-cancel-btn" onclick="cancelRenngeki()">キャンセル</button>
+    </div>
+  </div>
+  <div class="timeline-wrap" id="timelineWrap" style="display:none;">
+    <div class="timeline-header">
+      <span>UTC 12:00 開始</span>
+      <span id="tlElapsed">経過 0:00</span>
+      <span>UTC 17:00 終了</span>
+    </div>
+    <div class="timeline-bar-outer">
+      <div class="timeline-bar-inner" id="timelineBar"></div>
+    </div>
+    <div class="timeline-clocks">
+      <span>12:00</span>
+      <span>13:00</span>
+      <span>14:00</span>
+      <span>15:00</span>
+      <span>16:00</span>
+      <span>17:00</span>
+    </div>
+    <div style="text-align:center;margin-top:6px;font-size:0.72rem;color:#aaa;">
+      現在UTC: <span class="timeline-now" id="tlNowUTC">--:--</span>
+      &nbsp;|&nbsp; 残り: <span class="timeline-now" id="tlRemain">--:--</span>
+    </div>
+  </div>
+</div>
+
+<!-- グリッド -->
+<div class="grid-wrapper">
+  <table id="mainGrid"></table>
+</div>
+
+<!-- 連撃セット一覧（決戦モード時のみ表示） -->
+<div class="renngeki-wrap" id="renngekiWrap" style="display:none;">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+    <span style="font-size:0.65rem;color:#a855f7;letter-spacing:0.1em;">⚡ 連撃管理</span>
+    <hr style="flex:1;border:none;border-top:1px solid #2a2a4a;">
+  </div>
+  <div id="renngekiSets"></div>
+</div>
+
+<!-- カウンターオーバーレイ -->
+<div class="counter-overlay" id="counterOverlay" style="display:none;">
+  <div class="counter-set-title" id="counterSetTitle"></div>
+  <div class="counter-number phase-down" id="counterNumber">5</div>
+  <div class="counter-members" id="counterMembers"></div>
+  <button class="counter-stop-btn" onclick="stopCounter()">✕ 中止</button>
+</div>
+
+<script>
+const ROWS = 14;
+const COLS = 14;
+const PET_DURATION_MS = 2 * 60 * 60 * 1000; // 2時間
+
+// ===== グリッドデータ =====
+function makeGrid() {
+  let g = [];
+  for (let r = 0; r < ROWS; r++) {
+    g.push([]);
+    for (let c = 0; c < COLS; c++) {
+      g[r].push({ type: 'empty', boost: 0, normal: 0, player: '' });
+    }
+  }
+
+  const data = {
+    '0,4':  [54,66], '0,9': [54,66],
+    '1,4':  [47,58], '1,5': [45,55], '1,6': [43,52], '1,7': [43,52], '1,8': [45,55], '1,9': [47,58],
+    '2,4':  [41,50], '2,5': [38,47], '2,6': [37,45], '2,7': [37,45], '2,8': [38,47], '2,9': [41,50],
+    '3,3':  [39,48], '3,4': [35,43], '3,5': [32,39], '3,6': [30,36], '3,7': [30,36], '3,8': [32,39], '3,9': [35,43], '3,10': [39,48],
+    '4,0':  [54,66], '4,1': [47,58], '4,2': [41,50], '4,3': [35,43],
+    '4,10': [35,43], '4,11': [41,50], '4,12': [47,58], '4,13': [54,66],
+    '5,1':  [45,55], '5,2': [38,47], '5,3': [32,39],
+    '5,10': [32,39], '5,11': [38,47], '5,12': [45,55],
+    '6,1':  [43,52], '6,2': [37,45], '6,3': [30,36],
+    '6,10': [30,36], '6,11': [37,45], '6,12': [43,52],
+    '7,1':  [43,52], '7,2': [37,45], '7,3': [30,36],
+    '7,10': [30,36], '7,11': [37,45], '7,12': [43,52],
+    '8,1':  [41,55], '8,2': [38,47], '8,3': [32,39],
+    '8,10': [32,39], '8,11': [38,47], '8,12': [45,55],
+    '9,0':  [54,66], '9,1': [47,58], '9,2': [41,50], '9,3': [35,43],
+    '9,10': [35,43], '9,11': [41,50], '9,12': [47,58], '9,13': [54,66],
+    '10,3': [39,48], '10,4': [35,43], '10,5': [32,39], '10,6': [30,36], '10,7': [30,36], '10,8': [32,39], '10,9': [35,43], '10,10': [39,48],
+    '11,4': [41,50], '11,5': [38,47], '11,6': [37,45], '11,7': [37,45], '11,8': [38,47], '11,9': [41,50],
+    '12,4': [47,58], '12,5': [45,55], '12,6': [43,52], '12,7': [43,52], '12,8': [45,55], '12,9': [47,58],
+    '13,4': [54,66], '13,9': [54,66],
+  };
+  for (const key in data) {
+    const [r, c] = key.split(',').map(Number);
+    g[r][c] = { type: 'cell', boost: data[key][0], normal: data[key][1], player: '' };
+  }
+
+  const colLabels = {
+    '0,7': 'J', '0,8': 'K', '0,10': 'A', '0,11': 'D', '0,12': 'G', '0,13': 'I',
+    '1,10': 'B', '1,11': 'E', '1,12': 'H',
+    '2,10': 'C', '2,11': 'F',
+  };
+  for (const key in colLabels) {
+    const [r, c] = key.split(',').map(Number);
+    g[r][c] = { type: 'col-label', label: colLabels[key] };
+  }
+
+  g[4][4] = { type: 'gate', label: '北' };
+  g[4][9] = { type: 'gate', label: '東' };
+  g[9][4] = { type: 'gate', label: '西' };
+  g[9][9] = { type: 'gate', label: '南' };
+
+  for (let r = 4; r <= 9; r++) {
+    for (let c = 4; c <= 9; c++) {
+      if (g[r][c].type === 'empty') g[r][c] = { type: 'inner', player: '' };
+    }
+  }
+
+  g[6][6] = { type: 'city-tl' };
+  g[6][7] = { type: 'city-tr' };
+  g[7][6] = { type: 'city-bl' };
+  g[7][7] = { type: 'city-br' };
+
+  return g;
+}
+
+// ===== 状態 =====
+const grid = makeGrid();
+let appMode = 'test';        // 'test' | 'battle'
+let globalMode = 'normal';   // テストモード用: 'normal' | 'boost'
+const cellModes = {};        // テストモード: r,c => 'normal'|'boost'
+const playerNames = {};      // 全モード共通
+
+// 決戦モード用
+let battleRunning = false;
+let battleStartUTCMs = null;
+let battleTimerID = null; // setIntervalのID（止める時に使う）
+// ペットスキル状態: r,c => { status: 'none'|'active'|'expired', activatedAt: ms|null }
+const petState = {};
+
+function getPetStatus(r, c) {
+  return petState[`${r},${c}`] || { status: 'none', activatedAt: null };
+}
+function setPetStatus(r, c, status, activatedAt) {
+  petState[`${r},${c}`] = { status, activatedAt: activatedAt || null };
+}
+
+// ===== アプリモード切替 =====
+function switchAppMode(mode) {
+  appMode = mode;
+  document.getElementById('btnTest').className   = mode === 'test'   ? 'active-test'   : '';
+  document.getElementById('btnBattle').className = mode === 'battle' ? 'active-battle' : '';
+  document.getElementById('testControls').style.display   = mode === 'test'   ? 'flex' : 'none';
+  document.getElementById('battleControls').style.display = mode === 'battle' ? 'flex' : 'none';
+  if (mode !== 'battle') {
+    cancelRenngeki();
+    document.getElementById('renngekiWrap').style.display = 'none';
+  } else {
+    renderRenngekiSets();
+  }
+  document.getElementById('appSubtitle').textContent =
+    mode === 'test'
+      ? '下書きモード：名前の入力・行軍時間の確認'
+      : '決戦モード：ペットスキル状況をリアルタイム管理';
+  renderGrid();
+}
+
+// ===== テストモード =====
+function getTestMode(r, c) {
+  return cellModes[`${r},${c}`] || globalMode;
+}
+
+function toggleAll() {
+  globalMode = globalMode === 'normal' ? 'boost' : 'normal';
+  for (const k in cellModes) delete cellModes[k];
+  updateToggleBtn();
+  renderGrid();
+}
+
+function updateToggleBtn() {
+  const btn = document.getElementById('globalToggle');
+  const lbl = document.getElementById('modeLabel');
+  if (globalMode === 'boost') {
+    btn.className = 'toggle-btn active-boost';
+    lbl.innerHTML = '現在: <span style="color:#e85d2a">ペットスキルあり</span>';
+  } else {
+    btn.className = 'toggle-btn active-normal';
+    lbl.innerHTML = '現在: <span>ペットスキルなし</span>';
+  }
+}
+
+// ===== 決戦モード =====
+function startBattle() {
+  if (battleRunning) return;
+  battleRunning = true;
+
+  // 初回のみUTC12:00を記録（止めて再開しても上書きしない）
+  if (!battleStartUTCMs) {
+    const now = new Date();
+    battleStartUTCMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0, 0);
+  }
+
+  const startBtn = document.getElementById('battleStartBtn');
+  const stopBtn  = document.getElementById('battleStopBtn');
+  startBtn.textContent = '⚔ 決戦進行中';
+  startBtn.classList.add('running');
+  stopBtn.style.display = 'block';
+
+  document.getElementById('timelineWrap').style.display = 'block';
+  updateTimeline();
+  checkPetExpiry();
+  battleTimerID = setInterval(() => {
+    updateTimeline();
+    checkPetExpiry();
+  }, 1000);
+
+  renderGrid();
+}
+
+function stopBattle() {
+  if (!battleRunning) return;
+  battleRunning = false;
+
+  // タイマーを止める（表示非表示のみ、内部状態はすべて維持）
+  clearInterval(battleTimerID);
+  battleTimerID = null;
+
+  const startBtn = document.getElementById('battleStartBtn');
+  const stopBtn  = document.getElementById('battleStopBtn');
+  startBtn.textContent = '▶ 決戦再開';
+  startBtn.classList.remove('running');
+  stopBtn.style.display = 'none';
+
+  document.getElementById('timelineWrap').style.display = 'none';
+}
+
+function updateTimeline() {
+  const now = Date.now();
+  const utcNowMs = now; // Date.now() はUTC
+  const endMs = battleStartUTCMs + 5 * 60 * 60 * 1000;
+  const elapsedMs = utcNowMs - battleStartUTCMs;
+  const remainMs = endMs - utcNowMs;
+
+  const pct = Math.min(100, Math.max(0, (elapsedMs / (5 * 60 * 60 * 1000)) * 100));
+  document.getElementById('timelineBar').style.width = pct + '%';
+
+  const toHM = ms => {
+    if (ms < 0) return '00:00';
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    return `${h}:${String(m).padStart(2,'0')}`;
+  };
+
+  document.getElementById('tlElapsed').textContent = '経過 ' + toHM(elapsedMs);
+
+  const utcNow = new Date(utcNowMs);
+  document.getElementById('tlNowUTC').textContent =
+    String(utcNow.getUTCHours()).padStart(2,'0') + ':' + String(utcNow.getUTCMinutes()).padStart(2,'0');
+  document.getElementById('tlRemain').textContent = toHM(remainMs);
+}
+
+function checkPetExpiry() {
+  const now = Date.now();
+  let changed = false;
+  for (const key in petState) {
+    const s = petState[key];
+    if (s.status === 'active' && s.activatedAt && now - s.activatedAt >= PET_DURATION_MS) {
+      s.status = 'expired';
+      changed = true;
+    }
+  }
+  if (changed) renderGrid();
+}
+
+// ===== セルタップ（決戦モード） =====
+function tapCellBattle(r, c) {
+  // 連撃選択モード中
+  if (renngekiSelecting) {
+    const key = `${r},${c}`;
+    if (renngekiSelected.has(key)) {
+      renngekiSelected.delete(key);
+    } else {
+      renngekiSelected.add(key);
+    }
+    renderGrid();
+    return;
+  }
+
+  const cur = getPetStatus(r, c);
+  if (cur.status === 'none') {
+    setPetStatus(r, c, 'active', Date.now());
+  } else if (cur.status === 'active') {
+    // そのまま — 間違い防止のため 使用済になるのは自動のみ
+    // ただし再タップで none に戻す（間違い修正）
+    setPetStatus(r, c, 'none', null);
+  } else if (cur.status === 'expired') {
+    setPetStatus(r, c, 'none', null);
+  }
+  renderGrid();
+}
+
+// ===== グリッド描画 =====
+function renderGrid() {
+  const table = document.getElementById('mainGrid');
+  table.innerHTML = '';
+
+  for (let r = 0; r < ROWS; r++) {
+    const tr = document.createElement('tr');
+    for (let c = 0; c < COLS; c++) {
+      const cell = grid[r][c];
+      const td = document.createElement('td');
+
+      if (cell.type === 'empty') {
+        td.className = 'empty';
+      } else if (cell.type === 'col-label') {
+        td.className = 'col-label';
+      } else if (cell.type === 'gate') {
+        td.className = 'gate';
+        td.textContent = cell.label;
+      } else if (cell.type === 'city-tl') {
+        td.className = 'city';
+        td.rowSpan = 2; td.colSpan = 2;
+        td.textContent = '太陽城';
+        tr.appendChild(td);
+        continue;
+      } else if (['city-tr','city-bl','city-br'].includes(cell.type)) {
+        continue;
+      } else if (cell.type === 'inner') {
+        td.className = 'inner';
+        if (appMode === 'test') {
+          const inp = document.createElement('input');
+          inp.className = 'player-input';
+          inp.placeholder = '名前';
+          inp.value = playerNames[`${r},${c}`] || '';
+          inp.addEventListener('input', e => { playerNames[`${r},${c}`] = e.target.value; });
+          td.appendChild(inp);
+        } else {
+          const disp = document.createElement('span');
+          disp.className = 'player-display';
+          disp.textContent = playerNames[`${r},${c}`] || '';
+          td.appendChild(disp);
+        }
+      } else if (cell.type === 'cell') {
+        if (appMode === 'test') {
+          // --- テストモード ---
+          td.className = 'cell';
+          const mode = getTestMode(r, c);
+          const val = mode === 'boost' ? cell.boost : cell.normal;
+
+          const span = document.createElement('span');
+          span.className = `time-val ${mode}`;
+          span.textContent = val + '秒';
+          td.appendChild(span);
+
+          const inp = document.createElement('input');
+          inp.className = 'player-input';
+          inp.placeholder = '名前';
+          inp.value = playerNames[`${r},${c}`] || '';
+          inp.addEventListener('input', e => { playerNames[`${r},${c}`] = e.target.value; });
+          td.appendChild(inp);
+
+          td.addEventListener('click', e => {
+            if (e.target.tagName === 'INPUT') return;
+            const cur = getTestMode(r, c);
+            cellModes[`${r},${c}`] = cur === 'normal' ? 'boost' : 'normal';
+            renderGrid();
+          });
+
+        } else {
+          // --- 決戦モード ---
+          const pet = getPetStatus(r, c);
+          const isSelected = renngekiSelected.has(`${r},${c}`);
+          let cellClass = 'cell';
+          if (renngekiSelecting) cellClass += ' rng-selecting';
+          if (isSelected)        cellClass += ' rng-selected';
+          else if (pet.status === 'active')  cellClass += ' pet-active';
+          else if (pet.status === 'expired') cellClass += ' pet-expired';
+          td.className = cellClass;
+
+          // 行軍時間（ペットあり=boostの秒数、なし=normalの秒数）
+          const timeVal = pet.status === 'active' ? cell.boost : cell.normal;
+          const timeMode = pet.status === 'active' ? 'boost' : 'normal';
+          const timeSpan = document.createElement('span');
+          timeSpan.className = `time-val ${timeMode}`;
+          timeSpan.textContent = timeVal + '秒';
+          td.appendChild(timeSpan);
+
+          // ペットスキルステータス
+          const petSpan = document.createElement('span');
+          petSpan.className = `pet-status s-${pet.status}`;
+          if (pet.status === 'none')    petSpan.textContent = 'スキルなし';
+          if (pet.status === 'active')  petSpan.textContent = 'スキルあり';
+          if (pet.status === 'expired') petSpan.textContent = '使用済';
+          td.appendChild(petSpan);
+
+          // アクティブ中：残り時間表示
+          if (pet.status === 'active' && pet.activatedAt) {
+            const remain = PET_DURATION_MS - (Date.now() - pet.activatedAt);
+            const h = Math.floor(remain / 3600000);
+            const m = Math.floor((remain % 3600000) / 60000);
+            const timerSpan = document.createElement('span');
+            timerSpan.className = 'pet-timer';
+            timerSpan.textContent = `残${h}h${String(m).padStart(2,'0')}m`;
+            td.appendChild(timerSpan);
+          }
+
+          // 名前表示
+          const nameDisp = document.createElement('span');
+          nameDisp.className = 'player-display';
+          nameDisp.textContent = playerNames[`${r},${c}`] || '';
+          td.appendChild(nameDisp);
+
+          td.addEventListener('click', () => tapCellBattle(r, c));
+        }
+      }
+
+      tr.appendChild(td);
+    }
+    table.appendChild(tr);
+  }
+}
+
+// ===== 連撃管理 =====
+let renngekiSelecting = false;
+const renngekiSelected = new Set(); // 'r,c' のセット
+let renngekiSets = []; // [{ cells: [{r,c,name,time,hasPet}] }]
+let renngekiCounter = 0;
+
+function toggleRenngekiSelect() {
+  if (renngekiSelecting) {
+    cancelRenngeki();
+  } else {
+    renngekiSelecting = true;
+    renngekiSelected.clear();
+    document.getElementById('renngekiBtn').classList.add('selecting');
+    document.getElementById('renngekiBtn').textContent = '⚡ 選択中...';
+    document.getElementById('renngekiHint').style.display = 'block';
+    renderGrid();
+  }
+}
+
+function cancelRenngeki() {
+  renngekiSelecting = false;
+  renngekiSelected.clear();
+  document.getElementById('renngekiBtn').classList.remove('selecting');
+  document.getElementById('renngekiBtn').textContent = '⚡ 連撃設定';
+  document.getElementById('renngekiHint').style.display = 'none';
+  renderGrid();
+}
+
+function confirmRenngeki() {
+  if (renngekiSelected.size < 1) { cancelRenngeki(); return; }
+
+  const cells = [];
+  for (const key of renngekiSelected) {
+    const [r, c] = key.split(',').map(Number);
+    const cell = grid[r][c];
+    if (cell.type !== 'cell') continue;
+    const pet = getPetStatus(r, c);
+    const hasPet = pet.status === 'active';
+    const time = hasPet ? cell.boost : cell.normal;
+    const name = playerNames[key] || `(${r},${c})`;
+    cells.push({ r, c, name, time, hasPet });
+  }
+
+  // 秒数の大きい順にソート
+  cells.sort((a, b) => b.time - a.time);
+
+  renngekiCounter++;
+  renngekiSets.push({ id: renngekiCounter, cells });
+  cancelRenngeki();
+  renderRenngekiSets();
+}
+
+function deleteRenngekiSet(id) {
+  renngekiSets = renngekiSets.filter(s => s.id !== id);
+  renderRenngekiSets();
+}
+
+function renderRenngekiSets() {
+  const wrap = document.getElementById('renngekiWrap');
+  const container = document.getElementById('renngekiSets');
+  wrap.style.display = renngekiSets.length > 0 ? 'block' : 'none';
+  container.innerHTML = '';
+
+  renngekiSets.forEach((set, idx) => {
+    const anchor = set.cells[0]; // 最大秒数＝基準
+
+    // テキスト生成
+    let lines = [];
+    set.cells.forEach((cell, i) => {
+      const diff = anchor.time - cell.time;
+      const num = String(i + 1) + '.';
+      const secStr = String(diff).padStart(2, '0') + '秒';
+      const timing = i === 0 ? `${secStr}で集結開始` : `${secStr}後に集結開始`;
+      lines.push(`${num} ${cell.name}  →  ${timing}`);
+    });
+    const text = `⚔️ 【第${idx + 1}連撃】⚔️\n\`\`\`\n${lines.join('\n')}\n\`\`\``;
+
+    // カード要素
+    const card = document.createElement('div');
+    card.className = 'renngeki-set';
+
+    const header = document.createElement('div');
+    header.className = 'renngeki-set-header';
+    header.innerHTML = `
+      <span class="renngeki-set-title">⚡ 第${idx + 1}連撃</span>
+      <button class="renngeki-delete-btn" onclick="deleteRenngekiSet(${set.id})">✕ 削除</button>
+    `;
+    card.appendChild(header);
+
+    set.cells.forEach((cell, i) => {
+      const diff = anchor.time - cell.time;
+      const row = document.createElement('div');
+      row.className = 'renngeki-row';
+      row.innerHTML = `
+        <span class="renngeki-rank">${i + 1}.</span>
+        <span class="renngeki-name">${cell.name}</span>
+        <span class="renngeki-time ${cell.hasPet ? 'boost-t' : ''}">${cell.time}秒</span>
+        <span class="renngeki-delay ${i === 0 ? 'anchor' : ''}">${i === 0 ? '🚩 最初に開始' : `⏱ +${diff}秒後`}</span>
+      `;
+      card.appendChild(row);
+    });
+
+    const textBox = document.createElement('div');
+    textBox.className = 'renngeki-text-box';
+    textBox.textContent = text.trim();
+    card.appendChild(textBox);
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'renngeki-copy-btn';
+    copyBtn.textContent = '📋 コピー';
+    copyBtn.onclick = () => {
+      const copied = () => {
+        copyBtn.textContent = '✅ コピーしました';
+        copyBtn.classList.add('copied');
+        setTimeout(() => {
+          copyBtn.textContent = '📋 コピー';
+          copyBtn.classList.remove('copied');
+        }, 2000);
+      };
+      // まずClipboard APIを試す
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text.trim()).then(copied).catch(() => fallbackCopy(text.trim(), copied));
+      } else {
+        fallbackCopy(text.trim(), copied);
+      }
+    };
+    card.appendChild(copyBtn);
+
+    const countBtn = document.createElement('button');
+    countBtn.className = 'renngeki-copy-btn';
+    countBtn.style.marginLeft = '8px';
+    countBtn.style.borderColor = '#a855f7';
+    countBtn.style.color = '#a855f7';
+    countBtn.textContent = '▶ カウント開始';
+    countBtn.onclick = () => startCounter(set.id);
+    card.appendChild(countBtn);
+
+    const sendBtn = document.createElement('button');
+    sendBtn.className = 'renngeki-copy-btn';
+    sendBtn.style.marginLeft = '8px';
+    sendBtn.style.borderColor = '#5865F2';
+    sendBtn.style.color = '#5865F2';
+    sendBtn.textContent = '📨 Discordに送信';
+    sendBtn.onclick = () => sendToDiscord(text, sendBtn);
+    card.appendChild(sendBtn);
+
+    container.appendChild(card);
+  });
+}
+
+// ===== Discord Webhook送信 =====
+async function sendToDiscord(text, btn) {
+  const url = document.getElementById('webhookUrl').value.trim();
+  if (!url) {
+    alert('Discord Webhook URLを決戦情報パネルに入力してください。');
+    return;
+  }
+  if (!url.startsWith('https://discord') && !url.startsWith('https://discordapp')) {
+    alert('Webhook URLの形式が正しくありません。\nDiscordのチャンネル設定から取得したURLを入力してください。');
+    return;
+  }
+
+  const orig = btn.textContent;
+  btn.textContent = '送信中...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: text })
+    });
+    if (res.ok) {
+      btn.textContent = '✅ 送信完了';
+      btn.style.borderColor = '#2ecc71';
+      btn.style.color = '#2ecc71';
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.style.borderColor = '#5865F2';
+        btn.style.color = '#5865F2';
+        btn.disabled = false;
+      }, 3000);
+    } else {
+      throw new Error(`HTTP ${res.status}`);
+    }
+  } catch(e) {
+    alert('送信に失敗しました。\nWebhook URLを確認してください。\n\n' + e.message);
+    btn.textContent = orig;
+    btn.style.borderColor = '#5865F2';
+    btn.style.color = '#5865F2';
+    btn.disabled = false;
+  }
+}
+
+// ===== クリップボードフォールバック =====
+function fallbackCopy(text, onSuccess) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try {
+    document.execCommand('copy');
+    if (onSuccess) onSuccess();
+  } catch(e) {
+    alert('コピーできませんでした。\n以下のテキストを手動でコピーしてください:\n\n' + text);
+  }
+  document.body.removeChild(ta);
+}
+
+// ===== カウンター =====
+let counterTimerID = null;
+
+function startCounter(setId) {
+  const set = renngekiSets.find(s => s.id === setId);
+  if (!set) return;
+
+  const overlay = document.getElementById('counterOverlay');
+  const numEl   = document.getElementById('counterNumber');
+  const membEl  = document.getElementById('counterMembers');
+  const titleEl = document.getElementById('counterSetTitle');
+
+  const idx = renngekiSets.indexOf(set);
+  titleEl.textContent = `⚡ 第${idx + 1}連撃 カウント`;
+
+  const anchor = set.cells[0]; // 最大秒数＝0のタイミングで開始する人
+
+  // カウントダウン5秒 → 0 → カウントアップ（最大遅延秒+5秒まで）
+  const maxDelay = set.cells[set.cells.length - 1]
+    ? anchor.time - set.cells[set.cells.length - 1].time
+    : 0;
+  const countStart = -5; // -5から始まる（5,4,3,2,1,0,1,2...）
+  const countEnd   = maxDelay + 3; // 最後の人の後3秒まで
+
+  let current = countStart;
+
+  function renderMembers(current) {
+    membEl.innerHTML = '';
+    set.cells.forEach(cell => {
+      const delay = anchor.time - cell.time;
+      const div = document.createElement('div');
+      div.className = 'counter-member';
+      const petLabel = cell.hasPet ? '🟢' : '⬜';
+      // currentが負=カウントダウン中、0以上=カウントアップ中
+      if (current >= 0 && current === delay) {
+        div.classList.add('now');
+        div.textContent = `🔔 今！ ${cell.name}（${delay === 0 ? '最初' : `+${delay}秒`}） ${petLabel}`;
+      } else if (current >= 0 && current > delay) {
+        div.classList.add('done');
+        div.textContent = `✅ ${cell.name} ${petLabel}`;
+      } else {
+        // 残り秒数 = delay - current（currentが負の場合はdelay + abs(current)）
+        const remaining = current < 0 ? delay + Math.abs(current) : delay - current;
+        div.textContent = `⏳ ${cell.name}（あと${remaining}秒） ${petLabel}`;
+      }
+      membEl.appendChild(div);
+    });
+  }
+
+  function tick() {
+    // 数値表示
+    const display = current <= 0 ? Math.abs(current) : current;
+    numEl.textContent = display;
+    numEl.className = 'counter-number ' + (
+      current < 0  ? 'phase-down' :
+      current === 0 ? 'phase-zero' :
+                      'phase-up'
+    );
+
+    renderMembers(current);
+
+    if (current >= countEnd) {
+      stopCounter();
+      return;
+    }
+    current++;
+  }
+
+  overlay.style.display = 'flex';
+  tick();
+  counterTimerID = setInterval(tick, 1000);
+}
+
+function stopCounter() {
+  clearInterval(counterTimerID);
+  counterTimerID = null;
+  document.getElementById('counterOverlay').style.display = 'none';
+}
+
+// ===== サマリーバー =====
+function updateSummary() {
+  const alliance = document.getElementById('allianceName').value.trim();
+  const enemy = document.getElementById('enemyName').value.trim();
+  const dateVal = document.getElementById('battleDate').value;
+  const bar = document.getElementById('summaryBar');
+
+  if (!alliance && !enemy && !dateVal) {
+    bar.innerHTML = '<span style="color:#3a3a5a;font-size:0.75rem;">決戦情報を入力すると、ここに表示されます</span>';
+    return;
+  }
+  let parts = [];
+  if (alliance) parts.push(`<span class="s-label">サーバー：</span><span class="s-item">${alliance}</span>`);
+  if (enemy)    parts.push(`<span class="s-label">vs</span><span class="s-item">${enemy}</span>`);
+  if (dateVal) {
+    const [datePart, timePart] = dateVal.split('T');
+    const [year, month, day] = datePart.split('-');
+    const [hour, minute] = timePart.split(':');
+    parts.push(`<span class="s-label">決戦日時：</span><span class="s-item">${year}/${month}/${day} ${hour}:${minute} UTC</span>`);
+  }
+  bar.innerHTML = '🏰 ' + parts.join('<span class="s-sep"> ｜ </span>');
+}
+
+// ペットの残り時間表示を1分ごとに更新
+setInterval(() => {
+  if (appMode === 'battle') renderGrid();
+}, 60000);
+
+renderGrid();
+</script>
+</body>
+</html>

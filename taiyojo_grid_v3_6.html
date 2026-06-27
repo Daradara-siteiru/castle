@@ -297,6 +297,60 @@
   td.cell.rng-selecting { outline: 2px solid #a855f7; outline-offset: -2px; cursor: crosshair; }
   td.cell.rng-selected  { outline: 3px solid #f0c040; outline-offset: -2px; background: #1a0a2a !important; }
 
+  /* ===== レポートモーダル ===== */
+  .report-overlay {
+    position: fixed; inset: 0;
+    background: rgba(10,10,20,0.92);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9998;
+  }
+  .report-modal {
+    background: #12122a;
+    border: 1px solid #2a2a4a;
+    border-radius: 8px;
+    width: min(700px, 96vw);
+    max-height: 85vh;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .report-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid #2a2a4a;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .report-header-title { font-size: 1rem; font-weight: 700; color: #f0c040; }
+  .report-close-btn { background: none; border: none; color: #555; font-size: 1.2rem; cursor: pointer; }
+  .report-close-btn:hover { color: #e85d2a; }
+  .report-body { padding: 16px 18px; overflow-y: auto; flex: 1; }
+  .report-section-title {
+    font-size: 0.75rem; font-weight: 700; color: #a855f7;
+    letter-spacing: 0.1em; margin: 12px 0 6px;
+    padding-bottom: 4px; border-bottom: 1px solid #2a2a4a;
+  }
+  .report-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 0; border-bottom: 1px solid #1e1e36;
+    font-size: 0.8rem; color: #e8e0d0;
+  }
+  .report-row:last-child { border-bottom: none; }
+  .report-time { color: #f0c040; font-size: 0.72rem; width: 52px; flex-shrink: 0; }
+  .report-name { flex: 1; font-weight: 600; }
+  .report-pet { font-size: 0.7rem; color: #2ecc71; }
+  .report-footer {
+    padding: 12px 18px;
+    border-top: 1px solid #2a2a4a;
+    display: flex; gap: 10px; justify-content: flex-end;
+  }
+  .report-action-btn {
+    padding: 8px 20px; border-radius: 2px; font-size: 0.82rem;
+    font-weight: 700; cursor: pointer; border: 2px solid;
+    transition: background 0.2s, color 0.2s;
+  }
+  .report-btn-discord { border-color: #5865F2; color: #5865F2; background: transparent; }
+  .report-btn-discord:hover { background: #5865F2; color: #fff; }
+  .report-btn-copy { border-color: #f0c040; color: #f0c040; background: transparent; }
+  .report-btn-copy:hover { background: #f0c040; color: #1a1000; }
+
   /* ===== カウンターオーバーレイ ===== */
   .counter-overlay {
     position: fixed;
@@ -524,6 +578,12 @@
   <button class="toggle-btn active-normal" id="globalToggle" onclick="toggleAll()">全マス切り替え</button>
   <p class="mode-label" id="modeLabel">現在: <span>ペットスキルなし</span></p>
   <p style="font-size:0.68rem;color:#666;margin-top:4px;">💡 ここで入力した各マスの名前は決戦モードにそのまま反映されます</p>
+  <div style="display:flex;align-items:center;gap:10px;margin-top:6px;background:#12122a;border:1px solid #2a2a4a;border-radius:4px;padding:8px 14px;">
+    <span style="font-size:0.72rem;color:#aaa;">⏱ カウントダウン開始秒数：</span>
+    <input type="number" id="countdownSeconds" min="1" max="30" value="5"
+      style="width:52px;background:#1a1a36;border:1px solid #2a2a4a;border-radius:3px;color:#f0c040;font-size:0.9rem;font-weight:700;text-align:center;padding:3px 4px;outline:none;">
+    <span style="font-size:0.72rem;color:#aaa;">秒前から</span>
+  </div>
 </div>
 
 <!-- 決戦モードコントロール -->
@@ -537,6 +597,7 @@
     <button class="battle-start-btn" id="battleStartBtn" onclick="startBattle()">▶ 決戦開始</button>
     <button class="battle-stop-btn" id="battleStopBtn" onclick="stopBattle()" style="display:none;">⏸ 止める</button>
     <button class="renngeki-select-btn" id="renngekiBtn" onclick="toggleRenngekiSelect()">⚡ 連撃設定</button>
+    <button class="renngeki-select-btn" style="border-color:#f0c040;color:#f0c040;" onclick="showReportModal()">📊 レポート</button>
   </div>
   <div id="renngekiHint" style="display:none;">
     <p class="renngeki-hint">マスを複数タップして選択 → 「この組み合わせで連撃」で確定</p>
@@ -589,6 +650,21 @@
   <div class="counter-number phase-down" id="counterNumber">5</div>
   <div class="counter-members" id="counterMembers"></div>
   <button class="counter-stop-btn" onclick="stopCounter()">✕ 中止</button>
+</div>
+
+<!-- レポートモーダル -->
+<div class="report-overlay" id="reportOverlay" style="display:none;">
+  <div class="report-modal">
+    <div class="report-header">
+      <span class="report-header-title">📊 決戦レポート</span>
+      <button class="report-close-btn" onclick="document.getElementById('reportOverlay').style.display='none'">✕</button>
+    </div>
+    <div class="report-body" id="reportBody"></div>
+    <div class="report-footer">
+      <button class="report-action-btn report-btn-copy" onclick="copyReport()">📋 テキストをコピー</button>
+      <button class="report-action-btn report-btn-discord" onclick="sendReport()">📨 Discordに送信</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -804,6 +880,9 @@ function checkPetExpiry() {
     const s = petState[key];
     if (s.status === 'active' && s.activatedAt && now - s.activatedAt >= PET_DURATION_MS) {
       s.status = 'expired';
+      // ログに終了時刻を記録
+      const entry = [...battleLog.pet].reverse().find(e => e.key === key && !e.expiredAtUTC);
+      if (entry) entry.expiredAtUTC = now;
       changed = true;
     }
   }
@@ -826,10 +905,19 @@ function tapCellBattle(r, c) {
 
   const cur = getPetStatus(r, c);
   if (cur.status === 'none') {
-    setPetStatus(r, c, 'active', Date.now());
+    const now = Date.now();
+    setPetStatus(r, c, 'active', now);
+    // ログ記録
+    battleLog.pet.push({
+      name: playerNames[`${r},${c}`] || `(${r},${c})`,
+      key: `${r},${c}`,
+      activatedAtUTC: now,
+      expiredAtUTC: null
+    });
   } else if (cur.status === 'active') {
-    // そのまま — 間違い防止のため 使用済になるのは自動のみ
-    // ただし再タップで none に戻す（間違い修正）
+    // 間違い修正：ログから直近エントリを削除
+    const idx = [...battleLog.pet].reverse().findIndex(e => e.key === `${r},${c}` && !e.expiredAtUTC);
+    if (idx !== -1) battleLog.pet.splice(battleLog.pet.length - 1 - idx, 1);
     setPetStatus(r, c, 'none', null);
   } else if (cur.status === 'expired') {
     setPetStatus(r, c, 'none', null);
@@ -956,6 +1044,166 @@ function renderGrid() {
     }
     table.appendChild(tr);
   }
+}
+
+// ===== レポート =====
+function buildReportText() {
+  const server  = document.getElementById('allianceName').value.trim() || '（未入力）';
+  const enemy   = document.getElementById('enemyName').value.trim()    || '（未入力）';
+  const dateVal = document.getElementById('battleDate').value;
+  let dateStr = '（未入力）';
+  if (dateVal) {
+    const [dp, tp] = dateVal.split('T');
+    const [y,m,d] = dp.split('-'); const [hh,mm] = tp.split(':');
+    dateStr = `${y}/${m}/${d} ${hh}:${mm} UTC`;
+  }
+
+  let t = '';
+  t += `📊 【決戦レポート】\n`;
+  t += `サーバー：${server}　vs　${enemy}\n`;
+  t += `決戦日時：${dateStr}\n`;
+  t += `\n`;
+
+  // 連撃ログ
+  if (battleLog.renngeki.length === 0) {
+    t += `【連撃記録】なし\n`;
+  } else {
+    t += `【連撃記録】\n`;
+    battleLog.renngeki.forEach((log, i) => {
+      t += `\n⚡ 第${log.idx}連撃　カウント開始：${utcHHMM(log.startedAtUTC)} UTC\n`;
+      log.cells.forEach((c, j) => {
+        const pet = c.hasPet ? '🟢ペットあり' : '⬜ペットなし';
+        t += `  ${j+1}. ${c.name}　${pet}\n`;
+      });
+    });
+  }
+
+  t += `\n`;
+
+  // ペットスキルログ
+  if (battleLog.pet.length === 0) {
+    t += `【ペットスキル使用記録】なし\n`;
+  } else {
+    t += `【ペットスキル使用記録】\n`;
+    battleLog.pet.forEach(log => {
+      const start = utcHHMM(log.activatedAtUTC);
+      const end   = log.expiredAtUTC ? utcHHMM(log.expiredAtUTC) : '使用中';
+      t += `🟢 ${log.name}　${start} UTC 〜 ${end} UTC\n`;
+    });
+  }
+
+  return t.trim();
+}
+
+function showReportModal() {
+  const body = document.getElementById('reportBody');
+  body.innerHTML = '';
+
+  const server  = document.getElementById('allianceName').value.trim() || '（未入力）';
+  const enemy   = document.getElementById('enemyName').value.trim()    || '（未入力）';
+  const dateVal = document.getElementById('battleDate').value;
+  let dateStr = '（未入力）';
+  if (dateVal) {
+    const [dp, tp] = dateVal.split('T');
+    const [y,m,d] = dp.split('-'); const [hh,mm] = tp.split(':');
+    dateStr = `${y}/${m}/${d} ${hh}:${mm} UTC`;
+  }
+
+  // 決戦情報
+  const info = document.createElement('div');
+  info.style.cssText = 'font-size:0.82rem;color:#aaa;margin-bottom:4px;';
+  info.innerHTML = `<span style="color:#f0c040;">🏰</span>　${server}　vs　${enemy}　｜　${dateStr}`;
+  body.appendChild(info);
+
+  // 連撃記録
+  const r1 = document.createElement('div');
+  r1.className = 'report-section-title';
+  r1.textContent = '⚡ 連撃記録';
+  body.appendChild(r1);
+
+  if (battleLog.renngeki.length === 0) {
+    body.appendChild(Object.assign(document.createElement('div'), { className: 'report-row', textContent: '記録なし' }));
+  } else {
+    battleLog.renngeki.forEach(log => {
+      const head = document.createElement('div');
+      head.style.cssText = 'font-size:0.78rem;font-weight:700;color:#a855f7;padding:6px 0 2px;';
+      head.textContent = `第${log.idx}連撃　${utcHHMM(log.startedAtUTC)} UTC にカウント開始`;
+      body.appendChild(head);
+      log.cells.forEach((c, j) => {
+        const row = document.createElement('div');
+        row.className = 'report-row';
+        row.style.paddingLeft = '12px';
+        row.innerHTML = `<span class="report-name">${j+1}. ${c.name}</span><span class="report-pet">${c.hasPet ? '🟢 ペットあり' : '⬜ ペットなし'}</span>`;
+        body.appendChild(row);
+      });
+    });
+  }
+
+  // ペットスキル記録
+  const r2 = document.createElement('div');
+  r2.className = 'report-section-title';
+  r2.textContent = '🟢 ペットスキル使用記録';
+  body.appendChild(r2);
+
+  if (battleLog.pet.length === 0) {
+    body.appendChild(Object.assign(document.createElement('div'), { className: 'report-row', textContent: '記録なし' }));
+  } else {
+    battleLog.pet.forEach(log => {
+      const row = document.createElement('div');
+      row.className = 'report-row';
+      const end = log.expiredAtUTC ? `${utcHHMM(log.expiredAtUTC)} UTC` : '使用中';
+      row.innerHTML = `<span class="report-name">${log.name}</span><span class="report-time">${utcHHMM(log.activatedAtUTC)} UTC</span><span style="font-size:0.7rem;color:#666;">〜 ${end}</span>`;
+      body.appendChild(row);
+    });
+  }
+
+  document.getElementById('reportOverlay').style.display = 'flex';
+}
+
+function copyReport() {
+  const text = buildReportText();
+  const btn = document.querySelector('.report-btn-copy');
+  const orig = btn.textContent;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = '✅ コピーしました'; setTimeout(() => btn.textContent = orig, 2000);
+    }).catch(() => fallbackCopy(text, () => { btn.textContent = '✅ コピーしました'; setTimeout(() => btn.textContent = orig, 2000); }));
+  } else {
+    fallbackCopy(text, () => { btn.textContent = '✅ コピーしました'; setTimeout(() => btn.textContent = orig, 2000); });
+  }
+}
+
+async function sendReport() {
+  const url = document.getElementById('webhookUrl').value.trim();
+  if (!url) { alert('Discord Webhook URLを決戦情報パネルに入力してください。'); return; }
+  const text = buildReportText();
+  const btn = document.querySelector('.report-btn-discord');
+  const orig = btn.textContent;
+  btn.textContent = '送信中...'; btn.disabled = true;
+  try {
+    const res = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: text })
+    });
+    if (res.ok) {
+      btn.textContent = '✅ 送信完了';
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
+    } else { throw new Error(`HTTP ${res.status}`); }
+  } catch(e) {
+    alert('送信に失敗しました。\n' + e.message);
+    btn.textContent = orig; btn.disabled = false;
+  }
+}
+
+// ===== 決戦ログ =====
+const battleLog = {
+  renngeki: [],   // [{setId, idx, startedAtUTC, cells:[{name,hasPet}]}]
+  pet: [],        // [{name, key, activatedAtUTC, expiredAtUTC}]
+};
+
+function utcHHMM(ms) {
+  const d = new Date(ms);
+  return String(d.getUTCHours()).padStart(2,'0') + ':' + String(d.getUTCMinutes()).padStart(2,'0');
 }
 
 // ===== 連撃管理 =====
@@ -1184,13 +1432,23 @@ function startCounter(setId) {
   const idx = renngekiSets.indexOf(set);
   titleEl.textContent = `⚡ 第${idx + 1}連撃 カウント`;
 
+  // 決戦ログに記録
+  const startedAtUTC = Date.now();
+  battleLog.renngeki.push({
+    setId: set.id,
+    idx: idx + 1,
+    startedAtUTC,
+    cells: set.cells.map(c => ({ name: c.name, hasPet: c.hasPet }))
+  });
+
   const anchor = set.cells[0]; // 最大秒数＝0のタイミングで開始する人
 
   // カウントダウン5秒 → 0 → カウントアップ（最大遅延秒+5秒まで）
   const maxDelay = set.cells[set.cells.length - 1]
     ? anchor.time - set.cells[set.cells.length - 1].time
     : 0;
-  const countStart = -5; // -5から始まる（5,4,3,2,1,0,1,2...）
+  const countdownSec = parseInt(document.getElementById('countdownSeconds').value) || 5;
+  const countStart = -countdownSec;
   const countEnd   = maxDelay + 3; // 最後の人の後3秒まで
 
   let current = countStart;

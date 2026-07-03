@@ -504,6 +504,26 @@
   .player-input::placeholder { color: #3a3a5a; }
   .player-input:focus { background: #1a1a3a; }
 
+  /* ペットレベル選択 */
+  .pet-level-select {
+    display: block;
+    width: 100%;
+    background: #12102a;
+    border: none;
+    border-top: 1px solid #3a2a5a;
+    color: #d4a0ff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-align: center;
+    padding: 2px 0;
+    outline: none;
+    cursor: pointer;
+    font-family: 'Segoe UI', sans-serif;
+    letter-spacing: 0.05em;
+  }
+  .pet-level-select:focus { background: #1e1440; }
+  .pet-level-select option { background: #1a1a36; color: #d4a0ff; }
+
   /* 決戦モードでは名前を読み取り専用表示 */
   .player-display {
     display: block;
@@ -578,6 +598,7 @@
   <button class="toggle-btn active-normal" id="globalToggle" onclick="toggleAll()">全マス切り替え</button>
   <p class="mode-label" id="modeLabel">現在: <span>ペットスキルなし</span></p>
   <p style="font-size:0.68rem;color:#666;margin-top:4px;">💡 ここで入力した各マスの名前は決戦モードにそのまま反映されます</p>
+  <p style="font-size:0.68rem;color:#888;margin-top:2px;">🐆 決戦前に各集結リーダーのユキヒョウスキルレベルを各マスで設定してください（デフォルト：Lv8）</p>
   <div style="display:flex;align-items:center;gap:10px;margin-top:6px;background:#12122a;border:1px solid #2a2a4a;border-radius:4px;padding:8px 14px;">
     <span style="font-size:0.72rem;color:#aaa;">⏱ カウントダウン開始秒数：</span>
     <input type="number" id="countdownSeconds" min="1" max="30" value="5"
@@ -744,6 +765,21 @@ let appMode = 'test';        // 'test' | 'battle'
 let globalMode = 'normal';   // テストモード用: 'normal' | 'boost'
 const cellModes = {};        // テストモード: r,c => 'normal'|'boost'
 const playerNames = {};      // 全モード共通
+const petLevels = {};        // 各マスのユキヒョウペットスキルレベル（デフォルト8）
+
+// ユキヒョウペットスキルレベル別加算率
+const PET_LEVEL_RATES = { 1:15, 2:17, 3:19, 4:21, 5:23, 6:25, 7:27, 8:30 };
+const BASE_SPEED = 126.1; // 実測値から逆算した元速度
+
+function getPetLevel(r, c) {
+  return petLevels[`${r},${c}`] || 8;
+}
+
+// ペットスキルあり時の行軍時間を計算（切り上げ）
+function calcBoostTime(normal, level) {
+  const addRate = PET_LEVEL_RATES[level] || 30;
+  return Math.ceil(normal * BASE_SPEED / (BASE_SPEED + addRate));
+}
 
 // 決戦モード用
 let battleRunning = false;
@@ -971,7 +1007,9 @@ function renderGrid() {
           // --- テストモード ---
           td.className = 'cell';
           const mode = getTestMode(r, c);
-          const val = mode === 'boost' ? cell.boost : cell.normal;
+          const petLv = getPetLevel(r, c);
+          const boostVal = calcBoostTime(cell.normal, petLv);
+          const val = mode === 'boost' ? boostVal : cell.normal;
 
           const span = document.createElement('span');
           span.className = `time-val ${mode}`;
@@ -985,8 +1023,24 @@ function renderGrid() {
           inp.addEventListener('input', e => { playerNames[`${r},${c}`] = e.target.value; });
           td.appendChild(inp);
 
+          // ペットレベル選択
+          const sel = document.createElement('select');
+          sel.className = 'pet-level-select';
+          for (let lv = 1; lv <= 8; lv++) {
+            const opt = document.createElement('option');
+            opt.value = lv;
+            opt.textContent = `Lv${lv}`;
+            if ((petLevels[`${r},${c}`] || 8) === lv) opt.selected = true;
+            sel.appendChild(opt);
+          }
+          sel.addEventListener('change', e => {
+            petLevels[`${r},${c}`] = parseInt(e.target.value);
+            renderGrid();
+          });
+          td.appendChild(sel);
+
           td.addEventListener('click', e => {
-            if (e.target.tagName === 'INPUT') return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
             const cur = getTestMode(r, c);
             cellModes[`${r},${c}`] = cur === 'normal' ? 'boost' : 'normal';
             renderGrid();
@@ -1003,8 +1057,10 @@ function renderGrid() {
           else if (pet.status === 'expired') cellClass += ' pet-expired';
           td.className = cellClass;
 
-          // 行軍時間（ペットあり=boostの秒数、なし=normalの秒数）
-          const timeVal = pet.status === 'active' ? cell.boost : cell.normal;
+          // 行軍時間（ペットスキルレベルに応じて計算）
+          const petLv = getPetLevel(r, c);
+          const boostTime = calcBoostTime(cell.normal, petLv);
+          const timeVal = pet.status === 'active' ? boostTime : cell.normal;
           const timeMode = pet.status === 'active' ? 'boost' : 'normal';
           const timeSpan = document.createElement('span');
           timeSpan.className = `time-val ${timeMode}`;
@@ -1244,7 +1300,8 @@ function confirmRenngeki() {
     if (cell.type !== 'cell') continue;
     const pet = getPetStatus(r, c);
     const hasPet = pet.status === 'active';
-    const time = hasPet ? cell.boost : cell.normal;
+    const petLv = getPetLevel(r, c);
+    const time = hasPet ? calcBoostTime(cell.normal, petLv) : cell.normal;
     const name = playerNames[key] || `(${r},${c})`;
     cells.push({ r, c, name, time, hasPet });
   }

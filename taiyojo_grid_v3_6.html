@@ -582,8 +582,11 @@
     <input class="info-input" id="battleDate" type="datetime-local" oninput="updateSummary()">
   </div>
   <div class="info-field" style="grid-column: 1 / -1;">
-    <label class="info-label" for="webhookUrl">Discord Webhook URL <span style="color:#555;font-size:0.6rem;text-transform:none;">（このツール内にのみ保存されます）</span></label>
-    <input class="info-input" id="webhookUrl" placeholder="https://discord.com/api/webhooks/..." type="password" style="font-size:0.72rem;">
+    <label class="info-label" for="webhookUrl">Discord Webhook URL <span style="color:#555;font-size:0.6rem;text-transform:none;">（構成の保存・読み込みと連動して管理されます）</span></label>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <input class="info-input" id="webhookUrl" placeholder="https://discord.com/api/webhooks/..." type="password" style="font-size:0.72rem;flex:1;">
+      <button onclick="clearWebhookUrl()" style="padding:4px 10px;border:1px solid #555;background:transparent;color:#888;font-size:0.68rem;cursor:pointer;border-radius:2px;white-space:nowrap;" onmouseover="this.style.borderColor='#e85d2a';this.style.color='#e85d2a'" onmouseout="this.style.borderColor='#555';this.style.color='#888'">🗑 クリア</button>
+    </div>
   </div>
   <div class="info-field" style="grid-column: 1 / -1;">
     <label class="info-label" for="supabaseUrl">Supabase URL <span style="color:#555;font-size:0.6rem;text-transform:none;">（名前・レベルの保存に使用）</span></label>
@@ -1120,6 +1123,12 @@ function renderGrid() {
   }
 }
 
+function clearWebhookUrl() {
+  document.getElementById('webhookUrl').value = '';
+  localStorage.removeItem(LS_KEYS.webhookUrl);
+  setSupabaseStatus('Webhook URLをクリアしました', '#888');
+}
+
 // ===== パスワードハッシュ =====
 async function hashPassword(password) {
   const msgBuffer = new TextEncoder().encode(password);
@@ -1171,7 +1180,8 @@ async function saveToSupabase() {
     player_names: JSON.stringify(playerNames),
     pet_levels: JSON.stringify(petLevels),
     countdown_sec: parseInt(document.getElementById('countdownSeconds').value) || 5,
-    password_hash: passwordHash
+    password_hash: passwordHash,
+    webhook_url: document.getElementById('webhookUrl').value.trim()
   };
 
   try {
@@ -1247,6 +1257,12 @@ async function loadFromSupabase() {
     // countdown復元
     if (row.countdown_sec) {
       document.getElementById('countdownSeconds').value = row.countdown_sec;
+    }
+
+    // webhook_url復元
+    if (row.webhook_url) {
+      document.getElementById('webhookUrl').value = row.webhook_url;
+      localStorage.setItem(LS_KEYS.webhookUrl, row.webhook_url);
     }
 
     setSupabaseStatus('✅ 読み込みました', '#2ecc71');

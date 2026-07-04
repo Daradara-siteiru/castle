@@ -1712,6 +1712,36 @@ setInterval(() => {
   if (appMode === 'battle') renderGrid();
 }, 60000);
 
+// ===== localStorage自動保存・復元 =====
+const LS_KEYS = {
+  supabaseUrl: 'taiyojo_supabase_url',
+  supabaseKey: 'taiyojo_supabase_key',
+  webhookUrl:  'taiyojo_webhook_url',
+};
+
+function saveCredentials() {
+  const url  = document.getElementById('supabaseUrl').value.trim();
+  const key  = document.getElementById('supabaseKey').value.trim();
+  const hook = document.getElementById('webhookUrl').value.trim();
+  if (url)  localStorage.setItem(LS_KEYS.supabaseUrl, url);
+  if (key)  localStorage.setItem(LS_KEYS.supabaseKey, key);
+  if (hook) localStorage.setItem(LS_KEYS.webhookUrl,  hook);
+}
+
+function loadCredentials() {
+  const url  = localStorage.getItem(LS_KEYS.supabaseUrl);
+  const key  = localStorage.getItem(LS_KEYS.supabaseKey);
+  const hook = localStorage.getItem(LS_KEYS.webhookUrl);
+  if (url)  document.getElementById('supabaseUrl').value  = url;
+  if (key)  document.getElementById('supabaseKey').value  = key;
+  if (hook) document.getElementById('webhookUrl').value   = hook;
+}
+
+['supabaseUrl','supabaseKey','webhookUrl'].forEach(id => {
+  document.getElementById(id).addEventListener('change', saveCredentials);
+});
+
+loadCredentials();
 renderGrid();
 </script>
 </body>

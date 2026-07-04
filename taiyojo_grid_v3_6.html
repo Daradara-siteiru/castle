@@ -430,30 +430,31 @@
     justify-content: center;
   }
 
-  table { border-collapse: collapse; background: #12122a; }
+  table { border-collapse: separate; border-spacing: 2px; background: #0a0a1a; padding: 2px; border-radius: 4px; }
 
   td {
     width: 52px;
     height: 52px;
-    border: 1px solid #2a2a4a;
+    border: 1.5px solid #5a5a8a;
+    border-radius: 2px;
     position: relative;
     vertical-align: middle;
     text-align: center;
     font-size: 0.68rem;
   }
-  td.empty { background: #0e0e20; }
-  td.col-label { color: #888; font-size: 0.7rem; font-weight: 600; background: #0e0e20; border: 1px solid #1a1a3a; }
-  td.gate { background: #2a2a3a; color: #c8b860; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; border: 1px solid #4a4a6a; }
-  td.inner { background: #1e1e36; border-color: #2a2a4a; }
-  td.city { background: #f0c040; color: #1a1000; font-weight: 900; font-size: 0.9rem; letter-spacing: 0.05em; border: 2px solid #c89000; }
+  td.empty { background: #0c0c1c; border: 1px solid #1a1a2a; }
+  td.col-label { color: #888; font-size: 0.7rem; font-weight: 600; background: #0c0c1c; border: 1px solid #1a1a2a; }
+  td.gate { background: #252535; color: #c8b860; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; border: 2px solid #8a8aaa; border-radius: 2px; }
+  td.inner { background: #1a1a32; border: 1px solid #3a3a5a; }
+  td.city { background: #f0c040; color: #1a1000; font-weight: 900; font-size: 0.9rem; letter-spacing: 0.05em; border: 2px solid #c89000; border-radius: 2px; }
 
-  td.cell { cursor: pointer; transition: background 0.15s; }
+  td.cell { cursor: pointer; transition: background 0.15s; background: #14143a; border: 1.5px solid #5a5a8a; border-radius: 2px; }
   td.cell:hover { background: #22224a; }
 
   /* ペットスキル状態による背景色 */
-  td.cell.pet-active  { background: #0a2a18; border-color: #2ecc71; }
+  td.cell.pet-active  { background: #082018; border: 1.5px solid #2ecc71; }
   td.cell.pet-active:hover { background: #0e3320; }
-  td.cell.pet-expired { background: #1e1e1e; border-color: #444; }
+  td.cell.pet-expired { background: #1a1a1a; border: 1.5px solid #555; }
   td.cell.pet-expired:hover { background: #252525; }
 
   .time-val {

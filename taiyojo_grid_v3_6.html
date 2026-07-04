@@ -788,20 +788,26 @@ let globalMode = 'normal';   // テストモード用: 'normal' | 'boost'
 const cellModes = {};        // テストモード: r,c => 'normal'|'boost'
 const playerNames = {};      // 全モード共通
 const petLevels = {};        // 各マスのユキヒョウペットスキルレベル（デフォルト8）
-const boostOverrides = {
-  // normal=58 → 実測48（計算値47と異なる）
+const boostOverrides = {};   // ユーザーが手動入力した実測値 r,c => 秒数
+
+// デフォルト実測値（Lv8専用）
+const DEFAULT_OVERRIDES_LV8 = {
   '1,4': 48, '1,9': 48, '4,1': 48, '4,12': 48,
   '9,1': 48, '9,12': 48, '12,4': 48, '12,9': 48,
-  // normal=43 → 実測36（計算値35と異なる）
   '3,4': 36, '3,9': 36, '4,3': 36, '4,10': 36,
   '9,3': 36, '9,10': 36, '10,4': 36, '10,9': 36,
-};   // 実測値上書き r,c => 秒数（空なら計算式を使用）
+};
 
 // 実際に使用するペットスキルあり時の行軍時間を取得
 function getBoostTime(r, c) {
   const key = `${r},${c}`;
+  const level = getPetLevel(r, c);
+  // ユーザーが手動入力した実測値は常に優先
   if (boostOverrides[key] && boostOverrides[key] > 0) return boostOverrides[key];
-  return calcBoostTime(grid[r][c].normal, getPetLevel(r, c));
+  // Lv8のみデフォルト実測値を使用
+  if (level === 8 && DEFAULT_OVERRIDES_LV8[key]) return DEFAULT_OVERRIDES_LV8[key];
+  // それ以外は計算式
+  return calcBoostTime(grid[r][c].normal, level);
 }
 
 // ユキヒョウペットスキルレベル別加算率

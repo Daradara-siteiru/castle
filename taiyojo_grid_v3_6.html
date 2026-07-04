@@ -788,6 +788,14 @@ let globalMode = 'normal';   // テストモード用: 'normal' | 'boost'
 const cellModes = {};        // テストモード: r,c => 'normal'|'boost'
 const playerNames = {};      // 全モード共通
 const petLevels = {};        // 各マスのユキヒョウペットスキルレベル（デフォルト8）
+const boostOverrides = {};   // 実測値上書き r,c => 秒数（空なら計算式を使用）
+
+// 実際に使用するペットスキルあり時の行軍時間を取得
+function getBoostTime(r, c) {
+  const key = `${r},${c}`;
+  if (boostOverrides[key] && boostOverrides[key] > 0) return boostOverrides[key];
+  return calcBoostTime(grid[r][c].normal, getPetLevel(r, c));
+}
 
 // ユキヒョウペットスキルレベル別加算率
 const PET_LEVEL_RATES = { 1:15, 2:17, 3:19, 4:21, 5:23, 6:25, 7:27, 8:30 };
@@ -800,7 +808,7 @@ function getPetLevel(r, c) {
 // ペットスキルあり時の行軍時間を計算（切り上げ）
 function calcBoostTime(normal, level) {
   const addRate = PET_LEVEL_RATES[level] || 30;
-  return Math.ceil(normal * BASE_SPEED / (BASE_SPEED + addRate));
+  return Math.floor(normal * BASE_SPEED / (BASE_SPEED + addRate));
 }
 
 // 決戦モード用
@@ -1029,8 +1037,7 @@ function renderGrid() {
           // --- テストモード ---
           td.className = 'cell';
           const mode = getTestMode(r, c);
-          const petLv = getPetLevel(r, c);
-          const boostVal = calcBoostTime(cell.normal, petLv);
+          const boostVal = getBoostTime(r, c);
           const val = mode === 'boost' ? boostVal : cell.normal;
 
           const span = document.createElement('span');
@@ -1061,6 +1068,22 @@ function renderGrid() {
           });
           td.appendChild(sel);
 
+          // 実測値上書き入力欄
+          const ovr = document.createElement('input');
+          ovr.className = 'player-input';
+          ovr.placeholder = '実測(秒)';
+          ovr.type = 'number';
+          ovr.min = 1;
+          ovr.style.color = '#f0c040';
+          ovr.value = boostOverrides[`${r},${c}`] || '';
+          ovr.addEventListener('input', e => {
+            const v = parseInt(e.target.value);
+            if (v > 0) { boostOverrides[`${r},${c}`] = v; }
+            else { delete boostOverrides[`${r},${c}`]; }
+            renderGrid();
+          });
+          td.appendChild(ovr);
+
           td.addEventListener('click', e => {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
             const cur = getTestMode(r, c);
@@ -1079,9 +1102,8 @@ function renderGrid() {
           else if (pet.status === 'expired') cellClass += ' pet-expired';
           td.className = cellClass;
 
-          // 行軍時間（ペットスキルレベルに応じて計算）
-          const petLv = getPetLevel(r, c);
-          const boostTime = calcBoostTime(cell.normal, petLv);
+          // 行軍時間（実測値優先、なければレベル別計算）
+          const boostTime = getBoostTime(r, c);
           const timeVal = pet.status === 'active' ? boostTime : cell.normal;
           const timeMode = pet.status === 'active' ? 'boost' : 'normal';
           const timeSpan = document.createElement('span');
@@ -1182,7 +1204,8 @@ async function saveToSupabase() {
     pet_levels: JSON.stringify(petLevels),
     countdown_sec: parseInt(document.getElementById('countdownSeconds').value) || 5,
     password_hash: passwordHash,
-    webhook_url: document.getElementById('webhookUrl').value.trim()
+    webhook_url: document.getElementById('webhookUrl').value.trim(),
+    boost_overrides: JSON.stringify(boostOverrides)
   };
 
   try {
@@ -1258,6 +1281,12 @@ async function loadFromSupabase() {
     // countdown復元
     if (row.countdown_sec) {
       document.getElementById('countdownSeconds').value = row.countdown_sec;
+    }
+
+    // boost_overrides復元
+    if (row.boost_overrides) {
+      const overrides = JSON.parse(row.boost_overrides || '{}');
+      Object.assign(boostOverrides, overrides);
     }
 
     // webhook_url復元
@@ -1471,8 +1500,7 @@ function confirmRenngeki() {
     if (cell.type !== 'cell') continue;
     const pet = getPetStatus(r, c);
     const hasPet = pet.status === 'active';
-    const petLv = getPetLevel(r, c);
-    const time = hasPet ? calcBoostTime(cell.normal, petLv) : cell.normal;
+    const time = hasPet ? getBoostTime(r, c) : cell.normal;
     const name = playerNames[key] || `(${r},${c})`;
     cells.push({ r, c, name, time, hasPet });
   }

@@ -808,7 +808,7 @@ function getPetLevel(r, c) {
 // ペットスキルあり時の行軍時間を計算（切り上げ）
 function calcBoostTime(normal, level) {
   const addRate = PET_LEVEL_RATES[level] || 30;
-  return Math.floor(normal * BASE_SPEED / (BASE_SPEED + addRate));
+  return Math.ceil(normal * BASE_SPEED / (BASE_SPEED + addRate));
 }
 
 // 決戦モード用

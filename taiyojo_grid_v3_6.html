@@ -585,6 +585,19 @@
     <label class="info-label" for="webhookUrl">Discord Webhook URL <span style="color:#555;font-size:0.6rem;text-transform:none;">（このツール内にのみ保存されます）</span></label>
     <input class="info-input" id="webhookUrl" placeholder="https://discord.com/api/webhooks/..." type="password" style="font-size:0.72rem;">
   </div>
+  <div class="info-field" style="grid-column: 1 / -1;">
+    <label class="info-label" for="supabaseUrl">Supabase URL <span style="color:#555;font-size:0.6rem;text-transform:none;">（名前・レベルの保存に使用）</span></label>
+    <input class="info-input" id="supabaseUrl" placeholder="https://xxxx.supabase.co" type="password" style="font-size:0.72rem;">
+  </div>
+  <div class="info-field" style="grid-column: 1 / -1;">
+    <label class="info-label" for="supabaseKey">Supabase Anonymous API Key</label>
+    <input class="info-input" id="supabaseKey" placeholder="eyJ..." type="password" style="font-size:0.72rem;">
+  </div>
+  <div style="grid-column: 1 / -1; display:flex; gap:10px; margin-top:4px;">
+    <button onclick="saveToSupabase()" style="padding:7px 20px;border:1px solid #2ecc71;background:transparent;color:#2ecc71;font-size:0.78rem;font-weight:700;cursor:pointer;border-radius:2px;transition:background 0.2s,color 0.2s;" onmouseover="this.style.background='#2ecc71';this.style.color='#000'" onmouseout="this.style.background='transparent';this.style.color='#2ecc71'">💾 Supabaseに保存</button>
+    <button onclick="loadFromSupabase()" style="padding:7px 20px;border:1px solid #4a90d9;background:transparent;color:#4a90d9;font-size:0.78rem;font-weight:700;cursor:pointer;border-radius:2px;transition:background 0.2s,color 0.2s;" onmouseover="this.style.background='#4a90d9';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='#4a90d9'">📥 Supabaseから読み込み</button>
+    <span id="supabaseStatus" style="font-size:0.72rem;color:#666;align-self:center;"></span>
+  </div>
 </div>
 <div class="summary-bar" id="summaryBar">
   <span style="color:#3a3a5a;font-size:0.75rem;">決戦情報を入力すると、ここに表示されます</span>
@@ -1100,6 +1113,113 @@ function renderGrid() {
       tr.appendChild(td);
     }
     table.appendChild(tr);
+  }
+}
+
+// ===== Supabase連携 =====
+function getSupabaseHeaders() {
+  const key = document.getElementById('supabaseKey').value.trim();
+  return {
+    'Content-Type': 'application/json',
+    'apikey': key,
+    'Authorization': `Bearer ${key}`,
+    'Prefer': 'return=minimal'
+  };
+}
+
+function getSupabaseBase() {
+  const url = document.getElementById('supabaseUrl').value.trim().replace(/\/$/, '');
+  return `${url}/rest/v1/Daradara`;
+}
+
+function setSupabaseStatus(msg, color = '#888') {
+  const el = document.getElementById('supabaseStatus');
+  el.textContent = msg;
+  el.style.color = color;
+  if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 4000);
+}
+
+async function saveToSupabase() {
+  const url = document.getElementById('supabaseUrl').value.trim();
+  const key = document.getElementById('supabaseKey').value.trim();
+  if (!url || !key) { setSupabaseStatus('URLとAPIキーを入力してください', '#e85d2a'); return; }
+
+  setSupabaseStatus('保存中...', '#f0c040');
+
+  const payload = {
+    server_id: '2304',
+    player_names: JSON.stringify(playerNames),
+    pet_levels: JSON.stringify(petLevels),
+    countdown_sec: parseInt(document.getElementById('countdownSeconds').value) || 5
+  };
+
+  try {
+    // 既存レコードを削除してから挿入（upsert）
+    const base = getSupabaseBase();
+    const headers = getSupabaseHeaders();
+
+    // 既存データ削除
+    await fetch(`${base}?server_id=eq.2304`, { method: 'DELETE', headers });
+
+    // 新規挿入
+    const res = await fetch(base, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok || res.status === 201) {
+      setSupabaseStatus('✅ 保存しました', '#2ecc71');
+    } else {
+      const err = await res.text();
+      throw new Error(err);
+    }
+  } catch(e) {
+    setSupabaseStatus('❌ 保存失敗：' + e.message, '#e85d2a');
+  }
+}
+
+async function loadFromSupabase() {
+  const url = document.getElementById('supabaseUrl').value.trim();
+  const key = document.getElementById('supabaseKey').value.trim();
+  if (!url || !key) { setSupabaseStatus('URLとAPIキーを入力してください', '#e85d2a'); return; }
+
+  setSupabaseStatus('読み込み中...', '#f0c040');
+
+  try {
+    const res = await fetch(`${getSupabaseBase()}?server_id=eq.2304&limit=1`, {
+      headers: {
+        'apikey': key,
+        'Authorization': `Bearer ${key}`
+      }
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    if (!data || data.length === 0) {
+      setSupabaseStatus('データがありません', '#888');
+      return;
+    }
+
+    const row = data[0];
+    // playerNames復元
+    const names = JSON.parse(row.player_names || '{}');
+    Object.assign(playerNames, names);
+
+    // petLevels復元
+    const levels = JSON.parse(row.pet_levels || '{}');
+    Object.assign(petLevels, levels);
+
+    // countdown復元
+    if (row.countdown_sec) {
+      document.getElementById('countdownSeconds').value = row.countdown_sec;
+    }
+
+    setSupabaseStatus('✅ 読み込みました', '#2ecc71');
+    renderGrid();
+  } catch(e) {
+    setSupabaseStatus('❌ 読み込み失敗：' + e.message, '#e85d2a');
   }
 }
 

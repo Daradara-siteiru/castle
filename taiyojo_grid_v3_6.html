@@ -593,6 +593,10 @@
     <label class="info-label" for="supabaseKey">Supabase Anonymous API Key</label>
     <input class="info-input" id="supabaseKey" placeholder="eyJ..." type="password" style="font-size:0.72rem;">
   </div>
+  <div class="info-field" style="grid-column: 1 / -1;">
+    <label class="info-label" for="supabasePassword">保存・読み込みパスワード <span style="color:#555;font-size:0.6rem;text-transform:none;">（同盟メンバーに共有してください）</span></label>
+    <input class="info-input" id="supabasePassword" placeholder="パスワードを入力" type="password" style="font-size:0.72rem;">
+  </div>
   <div style="grid-column: 1 / -1; display:flex; gap:10px; margin-top:4px;">
     <button onclick="saveToSupabase()" style="padding:7px 20px;border:1px solid #2ecc71;background:transparent;color:#2ecc71;font-size:0.78rem;font-weight:700;cursor:pointer;border-radius:2px;transition:background 0.2s,color 0.2s;" onmouseover="this.style.background='#2ecc71';this.style.color='#000'" onmouseout="this.style.background='transparent';this.style.color='#2ecc71'">💾 Supabaseに保存</button>
     <button onclick="loadFromSupabase()" style="padding:7px 20px;border:1px solid #4a90d9;background:transparent;color:#4a90d9;font-size:0.78rem;font-weight:700;cursor:pointer;border-radius:2px;transition:background 0.2s,color 0.2s;" onmouseover="this.style.background='#4a90d9';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='#4a90d9'">📥 Supabaseから読み込み</button>
@@ -1116,6 +1120,14 @@ function renderGrid() {
   }
 }
 
+// ===== パスワードハッシュ =====
+async function hashPassword(password) {
+  const msgBuffer = new TextEncoder().encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // ===== Supabase連携 =====
 function getSupabaseHeaders() {
   const key = document.getElementById('supabaseKey').value.trim();
@@ -1147,13 +1159,19 @@ async function saveToSupabase() {
   const serverId = document.getElementById('allianceName').value.trim();
   if (!serverId) { setSupabaseStatus('自サーバー番号を入力してください', '#e85d2a'); return; }
 
+  const password = document.getElementById('supabasePassword').value.trim();
+  if (!password) { setSupabaseStatus('パスワードを入力してください', '#e85d2a'); return; }
+
   setSupabaseStatus('保存中...', '#f0c040');
+
+  const passwordHash = await hashPassword(password);
 
   const payload = {
     server_id: serverId,
     player_names: JSON.stringify(playerNames),
     pet_levels: JSON.stringify(petLevels),
-    countdown_sec: parseInt(document.getElementById('countdownSeconds').value) || 5
+    countdown_sec: parseInt(document.getElementById('countdownSeconds').value) || 5,
+    password_hash: passwordHash
   };
 
   try {
@@ -1184,10 +1202,15 @@ async function loadFromSupabase() {
   const key = document.getElementById('supabaseKey').value.trim();
   if (!url || !key) { setSupabaseStatus('URLとAPIキーを入力してください', '#e85d2a'); return; }
 
-  setSupabaseStatus('読み込み中...', '#f0c040');
-
   const serverId = document.getElementById('allianceName').value.trim();
   if (!serverId) { setSupabaseStatus('自サーバー番号を入力してください', '#e85d2a'); return; }
+
+  const password = document.getElementById('supabasePassword').value.trim();
+  if (!password) { setSupabaseStatus('パスワードを入力してください', '#e85d2a'); return; }
+
+  setSupabaseStatus('読み込み中...', '#f0c040');
+
+  const passwordHash = await hashPassword(password);
 
   try {
     const res = await fetch(`${getSupabaseBase()}?server_id=eq.${encodeURIComponent(serverId)}&limit=1`, {
@@ -1206,6 +1229,13 @@ async function loadFromSupabase() {
     }
 
     const row = data[0];
+
+    // パスワード検証
+    if (row.password_hash && row.password_hash !== passwordHash) {
+      setSupabaseStatus('❌ パスワードが違います', '#e85d2a');
+      return;
+    }
+
     // playerNames復元
     const names = JSON.parse(row.player_names || '{}');
     Object.assign(playerNames, names);

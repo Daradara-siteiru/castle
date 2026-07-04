@@ -1144,24 +1144,24 @@ async function saveToSupabase() {
   const key = document.getElementById('supabaseKey').value.trim();
   if (!url || !key) { setSupabaseStatus('URLとAPIキーを入力してください', '#e85d2a'); return; }
 
+  const serverId = document.getElementById('allianceName').value.trim();
+  if (!serverId) { setSupabaseStatus('自サーバー番号を入力してください', '#e85d2a'); return; }
+
   setSupabaseStatus('保存中...', '#f0c040');
 
   const payload = {
-    server_id: '2304',
+    server_id: serverId,
     player_names: JSON.stringify(playerNames),
     pet_levels: JSON.stringify(petLevels),
     countdown_sec: parseInt(document.getElementById('countdownSeconds').value) || 5
   };
 
   try {
-    // 既存レコードを削除してから挿入（upsert）
     const base = getSupabaseBase();
     const headers = getSupabaseHeaders();
 
-    // 既存データ削除
-    await fetch(`${base}?server_id=eq.2304`, { method: 'DELETE', headers });
+    await fetch(`${base}?server_id=eq.${encodeURIComponent(serverId)}`, { method: 'DELETE', headers });
 
-    // 新規挿入
     const res = await fetch(base, {
       method: 'POST',
       headers,
@@ -1186,8 +1186,11 @@ async function loadFromSupabase() {
 
   setSupabaseStatus('読み込み中...', '#f0c040');
 
+  const serverId = document.getElementById('allianceName').value.trim();
+  if (!serverId) { setSupabaseStatus('自サーバー番号を入力してください', '#e85d2a'); return; }
+
   try {
-    const res = await fetch(`${getSupabaseBase()}?server_id=eq.2304&limit=1`, {
+    const res = await fetch(`${getSupabaseBase()}?server_id=eq.${encodeURIComponent(serverId)}&limit=1`, {
       headers: {
         'apikey': key,
         'Authorization': `Bearer ${key}`

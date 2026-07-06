@@ -592,7 +592,7 @@
 
 <!-- 決戦情報パネル -->
 <div class="info-header-bar">
-  <span style="font-size:0.65rem;color:#f0c040;letter-spacing:0.1em;">⚔ 決戦情報</span>
+  <span id="info-panel-title" style="font-size:0.65rem;color:#f0c040;letter-spacing:0.1em;">⚔ 決戦情報</span>
   <hr style="flex:1;border:none;border-top:1px solid #2a2a4a;">
 </div>
 <div class="info-panel">
@@ -640,8 +640,8 @@
 <!-- 下書きモードコントロール -->
 <div class="test-controls" id="testControls">
   <div class="legend">
-    <span><span class="dot dot-normal"></span>ペットスキルなし（通常）</span>
-    <span><span class="dot dot-boost"></span>ペットスキルあり</span>
+    <span><span class="dot dot-normal"></span><span id="legend-no-pet">ペットスキルなし（通常）</span></span>
+    <span><span class="dot dot-boost"></span><span id="legend-pet">ペットスキルあり</span></span>
   </div>
   <button class="toggle-btn active-normal" id="globalToggle" onclick="toggleAll()">全マス切り替え</button>
   <p class="mode-label" id="modeLabel">現在: <span>ペットスキルなし</span></p>
@@ -693,8 +693,8 @@
       <span>17:00</span>
     </div>
     <div style="text-align:center;margin-top:6px;font-size:0.72rem;color:#aaa;">
-      現在UTC: <span class="timeline-now" id="tlNowUTC">--:--</span>
-      &nbsp;|&nbsp; 残り: <span class="timeline-now" id="tlRemain">--:--</span>
+      <span id="tl-now-label">現在UTC: </span><span class="timeline-now" id="tlNowUTC">--:--</span>
+      &nbsp;|&nbsp; <span id="tl-remain-label">残り: </span><span class="timeline-now" id="tlRemain">--:--</span>
     </div>
   </div>
 </div>
@@ -725,13 +725,13 @@
 <div class="report-overlay" id="reportOverlay" style="display:none;">
   <div class="report-modal">
     <div class="report-header">
-      <span class="report-header-title">📊 決戦レポート</span>
-      <button class="report-close-btn" onclick="document.getElementById('reportOverlay').style.display='none'">✕</button>
+      <span class="report-header-title" id="report-modal-title">📊 決戦レポート</span>
+      <button class="report-close-btn" id="report-close-btn" onclick="document.getElementById('reportOverlay').style.display='none'">✕</button>
     </div>
     <div class="report-body" id="reportBody"></div>
     <div class="report-footer">
-      <button class="report-action-btn report-btn-copy" onclick="copyReport()">📋 テキストをコピー</button>
-      <button class="report-action-btn report-btn-discord" onclick="sendReport()">📨 Discordに送信</button>
+      <button class="report-action-btn report-btn-copy" id="report-copy-btn" onclick="copyReport()">📋 テキストをコピー</button>
+      <button class="report-action-btn report-btn-discord" id="report-discord-btn" onclick="sendReport()">📨 Discordに送信</button>
     </div>
   </div>
 </div>
@@ -901,10 +901,10 @@ function updateToggleBtn() {
   const lbl = document.getElementById('modeLabel');
   if (globalMode === 'boost') {
     btn.className = 'toggle-btn active-boost';
-    lbl.innerHTML = `現在: <span style="color:#e85d2a">${t('modePet')}</span>`;
+    lbl.innerHTML = `${t('modeLabelPrefix')}<span style="color:#e85d2a">${t('modePet')}</span>`;
   } else {
     btn.className = 'toggle-btn active-normal';
-    lbl.innerHTML = `現在: <span>${t('modeNoPet')}</span>`;
+    lbl.innerHTML = `${t('modeLabelPrefix')}<span>${t('modeNoPet')}</span>`;
   }
 }
 
@@ -970,7 +970,7 @@ function updateTimeline() {
     return `${h}:${String(m).padStart(2,'0')}`;
   };
 
-  document.getElementById('tlElapsed').textContent = '経過 ' + toHM(elapsedMs);
+  document.getElementById('tlElapsed').textContent = t('tlElapsed') + toHM(elapsedMs);
 
   const utcNow = new Date(utcNowMs);
   document.getElementById('tlNowUTC').textContent =
@@ -1081,7 +1081,7 @@ function renderGrid() {
 
           const span = document.createElement('span');
           span.className = `time-val ${mode}`;
-          span.textContent = val + '秒';
+          span.textContent = val + t('secUnit');
           td.appendChild(span);
 
           const inp = document.createElement('input');
@@ -1147,7 +1147,7 @@ function renderGrid() {
           const timeMode = pet.status === 'active' ? 'boost' : 'normal';
           const timeSpan = document.createElement('span');
           timeSpan.className = `time-val ${timeMode}`;
-          timeSpan.textContent = timeVal + '秒';
+          timeSpan.textContent = timeVal + t('secUnit');
           td.appendChild(timeSpan);
 
           // ペットスキルステータス
@@ -1410,7 +1410,7 @@ function showReportModal() {
   // 連撃記録
   const r1 = document.createElement('div');
   r1.className = 'report-section-title';
-  r1.textContent = '⚡ 連撃記録';
+  r1.textContent = t('reportRenngeki');
   body.appendChild(r1);
 
   if (battleLog.renngeki.length === 0) {
@@ -1453,7 +1453,7 @@ function showReportModal() {
 
 function copyReport() {
   const text = buildReportText();
-  const btn = document.querySelector('.report-btn-copy');
+  const btn = document.getElementById('report-copy-btn');
   const orig = btn.textContent;
   const onCopied = () => {
     btn.textContent = t('reportCopied');
@@ -1470,7 +1470,7 @@ async function sendReport() {
   const url = document.getElementById('webhookUrl').value.trim();
   if (!url) { alert('Discord Webhook URLを決戦情報パネルに入力してください。'); return; }
   const text = buildReportText();
-  const btn = document.querySelector('.report-btn-discord');
+  const btn = document.getElementById('report-discord-btn');
   const orig = btn.textContent;
   btn.textContent = t('reportSending'); btn.disabled = true;
   try {
@@ -1498,6 +1498,9 @@ const I18N = {
     subtitleBattle: '決戦モード：ペットスキル状況をリアルタイム管理',
     modeDraft: '📝 下書きモード',
     modeBattle: '⚔ 決戦モード',
+    infoPanelTitle: '⚔ 決戦情報',
+    secUnit: '秒',
+    modeLabelPrefix: '現在: ',
     infoServer: '自サーバー番号',
     infoEnemy: '対戦相手',
     infoDate: '決戦日時（UTC）',
@@ -1599,6 +1602,9 @@ const I18N = {
     subtitleBattle: 'Battle Mode: Real-time pet skill management',
     modeDraft: '📝 Draft Mode',
     modeBattle: '⚔ Battle Mode',
+    infoPanelTitle: '⚔ Battle Info',
+    secUnit: 's',
+    modeLabelPrefix: 'Current: ',
     infoServer: 'Server No.',
     infoEnemy: 'Opponent',
     infoDate: 'Battle Time (UTC)',
@@ -1700,6 +1706,9 @@ const I18N = {
     subtitleBattle: '决战模式：实时管理宠物技能',
     modeDraft: '📝 草稿模式',
     modeBattle: '⚔ 决战模式',
+    infoPanelTitle: '⚔ 决战信息',
+    secUnit: '秒',
+    modeLabelPrefix: '当前: ',
     infoServer: '服务器编号',
     infoEnemy: '对战对手',
     infoDate: '决战时间（UTC）',
@@ -1801,6 +1810,9 @@ const I18N = {
     subtitleBattle: '결전 모드：펫 스킬 실시간 관리',
     modeDraft: '📝 초안 모드',
     modeBattle: '⚔ 결전 모드',
+    infoPanelTitle: '⚔ 결전 정보',
+    secUnit: '초',
+    modeLabelPrefix: '현재: ',
     infoServer: '서버 번호',
     infoEnemy: '상대방',
     infoDate: '결전 시간（UTC）',
@@ -1952,7 +1964,17 @@ function applyLang() {
     el.textContent = t(key);
   });
 
-  // 戦闘開始ボタンは状態に応じて
+  const legendNoPet = document.getElementById('legend-no-pet');
+  const legendPet = document.getElementById('legend-pet');
+  if (legendNoPet) legendNoPet.textContent = t('legendNoPet');
+  if (legendPet) legendPet.textContent = t('legendPet');
+
+  // 決戦情報タイトル
+  const infoPanelTitleEl = document.getElementById('info-panel-title');
+  if (infoPanelTitleEl) infoPanelTitleEl.textContent = t('infoPanelTitle');
+
+  // modeLabel（現在：〜）
+  updateToggleBtn();
   const startBtn = document.getElementById('battleStartBtn');
   if (startBtn) {
     if (battleRunning) startBtn.textContent = t('battleRunning');
@@ -1984,6 +2006,20 @@ function applyLang() {
   const cdUnit = document.getElementById('cd-unit');
   if (cdLabel) cdLabel.textContent = t('countdownLabel');
   if (cdUnit) cdUnit.textContent = t('countdownUnit');
+
+  const reportModalTitle = document.getElementById('report-modal-title');
+  const reportCloseBtn = document.getElementById('report-close-btn');
+  const reportCopyBtn = document.getElementById('report-copy-btn');
+  const reportDiscordBtn = document.getElementById('report-discord-btn');
+  if (reportModalTitle) reportModalTitle.textContent = t('reportTitle');
+  if (reportCloseBtn) reportCloseBtn.textContent = t('reportClose');
+  if (reportCopyBtn) reportCopyBtn.textContent = t('reportCopy');
+  if (reportDiscordBtn) reportDiscordBtn.textContent = t('reportSend');
+
+  const tlNowLabel = document.getElementById('tl-now-label');
+  const tlRemainLabel = document.getElementById('tl-remain-label');
+  if (tlNowLabel) tlNowLabel.textContent = t('tlNow');
+  if (tlRemainLabel) tlRemainLabel.textContent = t('tlRemain');
 
   // サマリーバーを更新
   updateSummary();
@@ -2101,8 +2137,8 @@ function renderRenngekiSets() {
       row.innerHTML = `
         <span class="renngeki-rank">${i + 1}.</span>
         <span class="renngeki-name">${cell.name}</span>
-        <span class="renngeki-time ${cell.hasPet ? 'boost-t' : ''}">${cell.time}秒</span>
-        <span class="renngeki-delay ${i === 0 ? 'anchor' : ''}">${i === 0 ? '🚩 最初に開始' : `⏱ +${diff}秒後`}</span>
+        <span class="renngeki-time ${cell.hasPet ? 'boost-t' : ''}">${cell.time}${t('secUnit')}</span>
+        <span class="renngeki-delay ${i === 0 ? 'anchor' : ''}">${i === 0 ? t('renngekiAnchor') : `${t('renngekiDelay')}${diff}${t('renngekiDelaySuffix')}`}</span>
       `;
       card.appendChild(row);
     });
@@ -2262,14 +2298,13 @@ function startCounter(setId) {
       // currentが負=カウントダウン中、0以上=カウントアップ中
       if (current >= 0 && current === delay) {
         div.classList.add('now');
-        div.textContent = `🔔 今！ ${cell.name}（${delay === 0 ? '最初' : `+${delay}秒`}） ${petLabel}`;
+        div.textContent = `${t('counterNow')} ${cell.name}（${delay === 0 ? t('counterFirst') : `${t('counterDelay')}${delay}${t('counterSec')}`}） ${petLabel}`;
       } else if (current >= 0 && current > delay) {
         div.classList.add('done');
-        div.textContent = `✅ ${cell.name} ${petLabel}`;
+        div.textContent = `${t('counterDone')} ${cell.name} ${petLabel}`;
       } else {
-        // 残り秒数 = delay - current（currentが負の場合はdelay + abs(current)）
         const remaining = current < 0 ? delay + Math.abs(current) : delay - current;
-        div.textContent = `⏳ ${cell.name}（あと${remaining}秒） ${petLabel}`;
+        div.textContent = `${t('counterWait')} ${cell.name}（${t('counterRemain')}${remaining}${t('counterSec')}） ${petLabel}`;
       }
       membEl.appendChild(div);
     });

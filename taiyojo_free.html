@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>太陽城 行軍時間マップ</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #1a1a2e;
+    font-family: 'Segoe UI', sans-serif;
+    color: #e8e0d0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 10px;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+    letter-spacing: 0.15em;
+    color: #f0c040;
+    margin-bottom: 6px;
+    text-shadow: 0 0 12px #f0c04066;
+  }
+
+  .subtitle {
+    font-size: 0.75rem;
+    color: #888;
+    margin-bottom: 16px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ===== MODE SWITCHER ===== */
+  .mode-switcher {
+    display: flex;
+    gap: 0;
+    margin-bottom: 18px;
+    border: 1px solid #2a2a4a;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .mode-switcher button {
+    padding: 8px 28px;
+    border: none;
+    background: #12122a;
+    color: #666;
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .mode-switcher button.active-test {
+    background: #1a3a5a;
+    color: #4a90d9;
+    font-weight: 700;
+  }
+  .mode-switcher button.active-battle {
+    background: #3a1a0a;
+    color: #e85d2a;
+    font-weight: 700;
+  }
+  .mode-switcher button:hover:not(.active-test):not(.active-battle) {
+    background: #1e1e36;
+    color: #aaa;
+  }
+
+  /* ===== INFO PANEL ===== */
+  .info-header-bar {
+    width: 100%;
+    max-width: 760px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .info-panel {
+    width: 100%;
+    max-width: 760px;
+    background: #12122a;
+    border: 1px solid #2a2a4a;
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px 16px;
+  }
+  .info-field { display: flex; flex-direction: column; gap: 4px; }
+  .info-label { font-size: 0.65rem; color: #888; letter-spacing: 0.08em; text-transform: uppercase; }
+  .info-input {
+    background: #1a1a36;
+    border: 1px solid #2a2a4a;
+    border-radius: 3px;
+    color: #e8e0d0;
+    font-size: 0.82rem;
+    padding: 5px 8px;
+    outline: none;
+    font-family: 'Segoe UI', sans-serif;
+    transition: border-color 0.15s;
+  }
+  .info-input:focus { border-color: #f0c040; }
+  .info-input::placeholder { color: #3a3a5a; }
+
+  /* ===== SUMMARY BAR ===== */
+  .summary-bar {
+    width: 100%;
+    max-width: 760px;
+    background: #0e0e20;
+    border: 1px solid #1a1a3a;
+    border-radius: 4px;
+    padding: 8px 14px;
+    margin-bottom: 12px;
+    font-size: 0.78rem;
+    color: #aaa;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    letter-spacing: 0.04em;
+  }
+  .summary-bar .s-item { color: #e8e0d0; }
+  .summary-bar .s-sep { color: #3a3a5a; }
+  .summary-bar .s-label { color: #666; }
+
+  /* ===== TEST MODE CONTROLS ===== */
+  .test-controls { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 14px; }
+  .legend {
+    display: flex;
+    gap: 16px;
+    font-size: 0.72rem;
+    color: #aaa;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-normal { background: #4a90d9; }
+  .dot-boost { background: #e85d2a; }
+
+  .toggle-btn {
+    padding: 9px 28px;
+    border: 2px solid #f0c040;
+    background: transparent;
+    color: #f0c040;
+    font-size: 0.82rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background 0.2s, color 0.2s;
+  }
+  .toggle-btn:hover { background: #f0c040; color: #1a1000; }
+  .toggle-btn.active-boost { background: #e85d2a; border-color: #e85d2a; color: #fff; }
+  .toggle-btn.active-normal { background: transparent; border-color: #4a90d9; color: #4a90d9; }
+  .mode-label { font-size: 0.72rem; color: #666; }
+  .mode-label span { color: #f0c040; font-weight: 600; }
+
+  /* ===== BATTLE MODE CONTROLS ===== */
+  .battle-controls { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 14px; width: 100%; max-width: 760px; }
+
+  .battle-start-btn {
+    padding: 11px 36px;
+    border: 2px solid #e85d2a;
+    background: transparent;
+    color: #e85d2a;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background 0.2s, color 0.2s;
+  }
+  .battle-start-btn:hover { background: #e85d2a; color: #fff; }
+  .battle-start-btn.running { background: #e85d2a; color: #fff; cursor: default; }
+
+  .battle-stop-btn {
+    padding: 11px 20px;
+    border: 2px solid #555;
+    background: transparent;
+    color: #888;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+  }
+  .battle-stop-btn:hover { background: #2a2a2a; border-color: #888; color: #ccc; }
+
+  /* Timeline bar */
+  .timeline-wrap {
+    width: 100%;
+    background: #0e0e20;
+    border: 1px solid #2a2a4a;
+    border-radius: 4px;
+    padding: 10px 14px;
+  }
+  .timeline-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.68rem;
+    color: #666;
+    margin-bottom: 6px;
+  }
+  .timeline-bar-outer {
+    width: 100%;
+    height: 10px;
+    background: #1a1a36;
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .timeline-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, #e85d2a, #f0c040);
+    border-radius: 5px;
+    transition: width 1s linear;
+    width: 0%;
+  }
+  .timeline-clocks {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 0.7rem;
+    color: #888;
+  }
+  .timeline-now { color: #f0c040; font-weight: 700; }
+
+  /* Pet skill legend */
+  .pet-legend {
+    display: flex;
+    gap: 14px;
+    font-size: 0.7rem;
+    color: #aaa;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .pet-legend span { display: flex; align-items: center; gap: 5px; }
+  .dot-none    { background: #2a2a4a; }
+  .dot-active  { background: #2ecc71; }
+  .dot-expired { background: #555; }
+
+  
+
+  
+  .report-btn-copy { border-color: #f0c040; color: #f0c040; background: transparent; }
+  .report-btn-copy:hover { background: #f0c040; color: #1a1000; }
+
+  
+
+  /* ===== GRID ===== */
+  .grid-wrapper {
+    overflow-x: auto;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  table { border-collapse: separate; border-spacing: 2px; background: #0a0a1a; padding: 2px; border-radius: 4px; }
+
+  td {
+    width: 52px;
+    height: 52px;
+    border: 1.5px solid #5a5a8a;
+    border-radius: 2px;
+    position: relative;
+    vertical-align: middle;
+    text-align: center;
+    font-size: 0.68rem;
+  }
+  td.empty { background: #0c0c1c; border: 1px solid #1a1a2a; }
+  td.col-label { color: #888; font-size: 0.7rem; font-weight: 600; background: #0c0c1c; border: 1px solid #1a1a2a; }
+  td.gate { background: #252535; color: #c8b860; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; border: 2px solid #8a8aaa; border-radius: 2px; }
+  td.inner { background: #1a1a32; border: 1px solid #3a3a5a; }
+  td.city { background: #f0c040; color: #1a1000; font-weight: 900; font-size: 0.9rem; letter-spacing: 0.05em; border: 2px solid #c89000; border-radius: 2px; }
+
+  td.cell { cursor: pointer; transition: background 0.15s; background: #14143a; border: 1.5px solid #5a5a8a; border-radius: 2px; }
+  td.cell:hover { background: #22224a; }
+
+  /* ペットスキル状態による背景色 */
+  td.cell.pet-active  { background: #082018; border: 1.5px solid #2ecc71; }
+  td.cell.pet-active:hover { background: #0e3320; }
+  td.cell.pet-expired { background: #1a1a1a; border: 1.5px solid #555; }
+  td.cell.pet-expired:hover { background: #252525; }
+
+  .time-val {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 1px;
+    transition: color 0.2s;
+  }
+  .time-val.normal  { color: #4a90d9; }
+  .time-val.boost   { color: #e85d2a; }
+
+  /* ペットスキルステータス表示 */
+  .pet-status {
+    display: block;
+    font-size: 0.58rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 1px;
+  }
+  .pet-status.s-none    { color: #3a3a5a; }
+  .pet-status.s-active  { color: #2ecc71; }
+  .pet-status.s-expired { color: #666; }
+
+  /* ペットスキル切れ残り時間 */
+  .pet-timer {
+    display: block;
+    font-size: 0.52rem;
+    color: #f0c040;
+    line-height: 1;
+    margin-bottom: 1px;
+  }
+
+  .player-input {
+    display: block;
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-top: 1px solid #2a2a4a;
+    color: #c8bfa8;
+    font-size: 0.55rem;
+    text-align: center;
+    padding: 1px 2px;
+    outline: none;
+    line-height: 1.2;
+  }
+  .player-input::placeholder { color: #3a3a5a; }
+  .player-input:focus { background: #1a1a3a; }
+
+  /* ペットレベル選択 */
+  .pet-level-select {
+    display: block;
+    width: 100%;
+    background: #12102a;
+    border: none;
+    border-top: 1px solid #3a2a5a;
+    color: #d4a0ff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-align: center;
+    padding: 2px 0;
+    outline: none;
+    cursor: pointer;
+    font-family: 'Segoe UI', sans-serif;
+    letter-spacing: 0.05em;
+  }
+  .pet-level-select:focus { background: #1e1440; }
+  .pet-level-select option { background: #1a1a36; color: #d4a0ff; }
+
+  /* 決戦モードでは名前を読み取り専用表示 */
+  .player-display {
+    display: block;
+    width: 100%;
+    font-size: 0.55rem;
+    color: #c8bfa8;
+    text-align: center;
+    border-top: 1px solid #2a2a4a;
+    padding: 1px 2px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 言語切替 */
+  .lang-switcher {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 10px;
+    justify-content: center;
+  }
+  .lang-btn {
+    padding: 4px 10px;
+    border: 1px solid #2a2a4a;
+    background: transparent;
+    color: #888;
+    font-size: 0.75rem;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .lang-btn:hover { background: #1a1a36; color: #e8e0d0; }
+  .lang-btn.active { background: #1a1a36; border-color: #f0c040; color: #f0c040; font-weight: 700; }
+
+  @media (max-width: 600px) {
+    td { width: 36px; height: 40px; font-size: 0.55rem; }
+    .time-val { font-size: 0.62rem; }
+    .player-input { font-size: 0.45rem; }
+    td.city { font-size: 0.65rem; }
+    td.gate { font-size: 0.65rem; }
+    .info-panel { grid-template-columns: 1fr; }
+    .pet-status { font-size: 0.48rem; }
+    .pet-timer { font-size: 0.44rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="lang-switcher">
+  <button class="lang-btn" id="lang-ja" onclick="setLang('ja')">🇯🇵 日本語</button>
+  <button class="lang-btn" id="lang-en" onclick="setLang('en')">🇺🇸 English</button>
+  <button class="lang-btn" id="lang-zh" onclick="setLang('zh')">🇨🇳 中文</button>
+  <button class="lang-btn" id="lang-ko" onclick="setLang('ko')">🇰🇷 한국어</button>
+</div>
+<h1 id="appTitle">太陽城 行軍時間マップ <span style="font-size:0.55em;color:#2ecc71;vertical-align:middle;">FREE</span></h1>
+<p class="subtitle" id="appSubtitle">下書きモード：名前の入力・行軍時間の確認</p>
+<p style="font-size:0.7rem;color:#f0c040;margin-bottom:8px;letter-spacing:0.05em;">⚠️ これはトライアル版です。全ての機能をご利用の場合はお問い合わせください。</p>
+
+
+<!-- モード切替 -->
+<div class="mode-switcher">
+  <button id="btnTest" class="active-test" onclick="switchAppMode('test')">📝 下書きモード</button>
+  <button id="btnBattle" onclick="switchAppMode('battle')">⚔ 決戦モード</button>
+</div>
+
+<!-- 決戦情報パネル -->
+<div class="info-header-bar">
+  <span id="info-panel-title" style="font-size:0.65rem;color:#f0c040;letter-spacing:0.1em;">⚔ 決戦情報</span>
+  <hr style="flex:1;border:none;border-top:1px solid #2a2a4a;">
+</div>
+<div class="info-panel">
+  <div class="info-field">
+    <label class="info-label" id="label-server" for="allianceName">自サーバー番号</label>
+    <input class="info-input" id="allianceName" placeholder="例：2304" oninput="updateSummary()">
+  </div>
+  <div class="info-field">
+    <label class="info-label" id="label-enemy" for="enemyName">対戦相手</label>
+    <input class="info-input" id="enemyName" placeholder="例：鉄壁同盟" oninput="updateSummary()">
+  </div>
+  <div class="info-field">
+    <label class="info-label" id="label-date" for="battleDate">決戦日時（UTC）</label>
+    <input class="info-input" id="battleDate" type="datetime-local" oninput="updateSummary()">
+  </div>
+  
+  
+  
+  
+  
+</div>
+<div class="summary-bar" id="summaryBar">
+  <span style="color:#3a3a5a;font-size:0.75rem;">決戦情報を入力すると、ここに表示されます</span>
+</div>
+
+<!-- 下書きモードコントロール -->
+<div class="test-controls" id="testControls">
+  <div class="legend">
+    <span><span class="dot dot-normal"></span><span id="legend-no-pet">ペットスキルなし（通常）</span></span>
+    <span><span class="dot dot-boost"></span><span id="legend-pet">ペットスキルあり</span></span>
+  </div>
+  <button class="toggle-btn active-normal" id="globalToggle" onclick="toggleAll()">全マス切り替え</button>
+  <p class="mode-label" id="modeLabel">現在: <span>ペットスキルなし</span></p>
+  <p id="draft-note1" style="font-size:0.68rem;color:#666;margin-top:4px;">💡 ここで入力した各マスの名前は決戦モードにそのまま反映されます</p>
+  <p id="draft-note2" style="font-size:0.68rem;color:#888;margin-top:2px;">🐆 決戦前に各集結リーダーのユキヒョウスキルレベルを各マスで設定してください（デフォルト：Lv8）</p>
+  
+</div>
+
+<!-- 決戦モードコントロール -->
+<div class="battle-controls" id="battleControls" style="display:none;">
+  <div class="pet-legend">
+    <span><span class="dot dot-none"></span>ペットスキルなし</span>
+    <span><span class="dot dot-active"></span>ペットスキルあり（2h）</span>
+    <span><span class="dot dot-expired"></span>ペットスキル使用済</span>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <button class="battle-start-btn" id="battleStartBtn" onclick="startBattle()">▶ 決戦開始</button>
+    <button class="battle-stop-btn" id="battleStopBtn" onclick="stopBattle()" style="display:none;">⏸ 止める</button>
+    
+    
+  </div>
+  
+  <div class="timeline-wrap" id="timelineWrap" style="display:none;">
+    <div class="timeline-header">
+      <span id="tl-start">UTC 12:00 開始</span>
+      <span id="tlElapsed">経過 0:00</span>
+      <span id="tl-end">UTC 17:00 終了</span>
+    </div>
+    <div class="timeline-bar-outer">
+      <div class="timeline-bar-inner" id="timelineBar"></div>
+    </div>
+    <div class="timeline-clocks">
+      <span>12:00</span>
+      <span>13:00</span>
+      <span>14:00</span>
+      <span>15:00</span>
+      <span>16:00</span>
+      <span>17:00</span>
+    </div>
+    <div style="text-align:center;margin-top:6px;font-size:0.72rem;color:#aaa;">
+      <span id="tl-now-label">現在UTC: </span><span class="timeline-now" id="tlNowUTC">--:--</span>
+      &nbsp;|&nbsp; <span id="tl-remain-label">残り: </span><span class="timeline-now" id="tlRemain">--:--</span>
+    </div>
+  </div>
+</div>
+
+<!-- グリッド -->
+<div class="grid-wrapper">
+  <table id="mainGrid"></table>
+</div>
+
+
+
+</div>
+
+      </div>
+</div>
+
+<script>
+const ROWS = 14;
+const COLS = 14;
+const PET_DURATION_MS = 2 * 60 * 60 * 1000; // 2時間
+
+// ===== グリッドデータ =====
+function makeGrid() {
+  let g = [];
+  for (let r = 0; r < ROWS; r++) {
+    g.push([]);
+    for (let c = 0; c < COLS; c++) {
+      g[r].push({ type: 'empty', boost: 0, normal: 0, player: '' });
+    }
+  }
+
+  const data = {
+    '0,4':  [54,66], '0,9': [54,66],
+    '1,4':  [47,58], '1,5': [45,55], '1,6': [43,52], '1,7': [43,52], '1,8': [45,55], '1,9': [47,58],
+    '2,4':  [41,50], '2,5': [38,47], '2,6': [37,45], '2,7': [37,45], '2,8': [38,47], '2,9': [41,50],
+    '3,3':  [39,48], '3,4': [35,43], '3,5': [32,39], '3,6': [30,36], '3,7': [30,36], '3,8': [32,39], '3,9': [35,43], '3,10': [39,48],
+    '4,0':  [54,66], '4,1': [47,58], '4,2': [41,50], '4,3': [35,43],
+    '4,10': [35,43], '4,11': [41,50], '4,12': [47,58], '4,13': [54,66],
+    '5,1':  [45,55], '5,2': [38,47], '5,3': [32,39],
+    '5,10': [32,39], '5,11': [38,47], '5,12': [45,55],
+    '6,1':  [43,52], '6,2': [37,45], '6,3': [30,36],
+    '6,10': [30,36], '6,11': [37,45], '6,12': [43,52],
+    '7,1':  [43,52], '7,2': [37,45], '7,3': [30,36],
+    '7,10': [30,36], '7,11': [37,45], '7,12': [43,52],
+    '8,1':  [41,55], '8,2': [38,47], '8,3': [32,39],
+    '8,10': [32,39], '8,11': [38,47], '8,12': [45,55],
+    '9,0':  [54,66], '9,1': [47,58], '9,2': [41,50], '9,3': [35,43],
+    '9,10': [35,43], '9,11': [41,50], '9,12': [47,58], '9,13': [54,66],
+    '10,3': [39,48], '10,4': [35,43], '10,5': [32,39], '10,6': [30,36], '10,7': [30,36], '10,8': [32,39], '10,9': [35,43], '10,10': [39,48],
+    '11,4': [41,50], '11,5': [38,47], '11,6': [37,45], '11,7': [37,45], '11,8': [38,47], '11,9': [41,50],
+    '12,4': [47,58], '12,5': [45,55], '12,6': [43,52], '12,7': [43,52], '12,8': [45,55], '12,9': [47,58],
+    '13,4': [54,66], '13,9': [54,66],
+  };
+  for (const key in data) {
+    const [r, c] = key.split(',').map(Number);
+    g[r][c] = { type: 'cell', boost: data[key][0], normal: data[key][1], player: '' };
+  }
+
+  const colLabels = {
+    '0,7': 'J', '0,8': 'K', '0,10': 'A', '0,11': 'D', '0,12': 'G', '0,13': 'I',
+    '1,10': 'B', '1,11': 'E', '1,12': 'H',
+    '2,10': 'C', '2,11': 'F',
+  };
+  for (const key in colLabels) {
+    const [r, c] = key.split(',').map(Number);
+    g[r][c] = { type: 'col-label', label: colLabels[key] };
+  }
+
+  g[4][4] = { type: 'gate', label: '北' };
+  g[4][9] = { type: 'gate', label: '東' };
+  g[9][4] = { type: 'gate', label: '西' };
+  g[9][9] = { type: 'gate', label: '南' };
+
+  for (let r = 4; r <= 9; r++) {
+    for (let c = 4; c <= 9; c++) {
+      if (g[r][c].type === 'empty') g[r][c] = { type: 'inner', player: '' };
+    }
+  }
+
+  g[6][6] = { type: 'city-tl' };
+  g[6][7] = { type: 'city-tr' };
+  g[7][6] = { type: 'city-bl' };
+  g[7][7] = { type: 'city-br' };
+
+  return g;
+}
+
+// ===== 状態 =====
+const grid = makeGrid();
+let appMode = 'test';        // 'test' | 'battle'
+let globalMode = 'normal';   // テストモード用: 'normal' | 'boost'
+const cellModes = {};        // テストモード: r,c => 'normal'|'boost'
+const playerNames = {};      // 全モード共通
+const petLevels = {};        // 各マスのユキヒョウペットスキルレベル（デフォルト8）
+const boostOverrides = {};   // ユーザーが手動入力した実測値 r,c => 秒数
+
+// デフォルト実測値（Lv8専用）
+const DEFAULT_OVERRIDES_LV8 = {
+  '1,4': 48, '1,9': 48, '4,1': 48, '4,12': 48,
+  '9,1': 48, '9,12': 48, '12,4': 48, '12,9': 48,
+  '3,4': 36, '3,9': 36, '4,3': 36, '4,10': 36,
+  '9,3': 36, '9,10': 36, '10,4': 36, '10,9': 36,
+};
+
+// 実際に使用するペットスキルあり時の行軍時間を取得
+function getBoostTime(r, c) {
+  const key = `${r},${c}`;
+  const level = getPetLevel(r, c);
+  // ユーザーが手動入力した実測値は常に優先
+  if (boostOverrides[key] && boostOverrides[key] > 0) return boostOverrides[key];
+  // Lv8のみデフォルト実測値を使用
+  if (level === 8 && DEFAULT_OVERRIDES_LV8[key]) return DEFAULT_OVERRIDES_LV8[key];
+  // それ以外は計算式
+  return calcBoostTime(grid[r][c].normal, level);
+}
+
+// ユキヒョウペットスキルレベル別加算率
+const PET_LEVEL_RATES = { 1:15, 2:17, 3:19, 4:21, 5:23, 6:25, 7:27, 8:30 };
+const BASE_SPEED = 126.1; // 実測値から逆算した元速度
+
+function getPetLevel(r, c) {
+  return petLevels[`${r},${c}`] || 8;
+}
+
+// ペットスキルあり時の行軍時間を計算（切り上げ）
+function calcBoostTime(normal, level) {
+  const addRate = PET_LEVEL_RATES[level] || 30;
+  return Math.ceil(normal * BASE_SPEED / (BASE_SPEED + addRate));
+}
+
+// 決戦モード用
+let battleRunning = false;
+let battleStartUTCMs = null;
+let battleTimerID = null; // setIntervalのID（止める時に使う）
+// ペットスキル状態: r,c => { status: 'none'|'active'|'expired', activatedAt: ms|null }
+const petState = {};
+
+function getPetStatus(r, c) {
+  return petState[`${r},${c}`] || { status: 'none', activatedAt: null };
+}
+function setPetStatus(r, c, status, activatedAt) {
+  petState[`${r},${c}`] = { status, activatedAt: activatedAt || null };
+}
+
+// ===== アプリモード切替 =====
+function switchAppMode(mode) {
+  appMode = mode;
+  document.getElementById('btnTest').className   = mode === 'test'   ? 'active-test'   : '';
+  document.getElementById('btnBattle').className = mode === 'battle' ? 'active-battle' : '';
+  document.getElementById('testControls').style.display   = mode === 'test'   ? 'flex' : 'none';
+  document.getElementById('battleControls').style.display = mode === 'battle' ? 'flex' : 'none';
+  
+  document.getElementById('appSubtitle').textContent =
+    mode === 'test'
+      ? '下書きモード：名前の入力・行軍時間の確認'
+      : '決戦モード：ペットスキル状況をリアルタイム管理';
+  renderGrid();
+}
+
+// ===== テストモード =====
+function getTestMode(r, c) {
+  return cellModes[`${r},${c}`] || globalMode;
+}
+
+function toggleAll() {
+  globalMode = globalMode === 'normal' ? 'boost' : 'normal';
+  for (const k in cellModes) delete cellModes[k];
+  updateToggleBtn();
+  renderGrid();
+}
+
+function updateToggleBtn() {
+  const btn = document.getElementById('globalToggle');
+  const lbl = document.getElementById('modeLabel');
+  if (globalMode === 'boost') {
+    btn.className = 'toggle-btn active-boost';
+    lbl.innerHTML = `${t('modeLabelPrefix')}<span style="color:#e85d2a">${t('modePet')}</span>`;
+  } else {
+    btn.className = 'toggle-btn active-normal';
+    lbl.innerHTML = `${t('modeLabelPrefix')}<span>${t('modeNoPet')}</span>`;
+  }
+}
+
+// ===== 決戦モード =====
+function startBattle() {
+  if (battleRunning) return;
+  battleRunning = true;
+
+  // 初回のみUTC12:00を記録（止めて再開しても上書きしない）
+  if (!battleStartUTCMs) {
+    const now = new Date();
+    battleStartUTCMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0, 0);
+  }
+
+  const startBtn = document.getElementById('battleStartBtn');
+  const stopBtn  = document.getElementById('battleStopBtn');
+  startBtn.textContent = '⚔ 決戦進行中';
+  startBtn.classList.add('running');
+  stopBtn.style.display = 'block';
+
+  document.getElementById('timelineWrap').style.display = 'block';
+  updateTimeline();
+  checkPetExpiry();
+  battleTimerID = setInterval(() => {
+    updateTimeline();
+    checkPetExpiry();
+  }, 1000);
+
+  renderGrid();
+}
+
+function stopBattle() {
+  if (!battleRunning) return;
+  battleRunning = false;
+
+  // タイマーを止める（表示非表示のみ、内部状態はすべて維持）
+  clearInterval(battleTimerID);
+  battleTimerID = null;
+
+  const startBtn = document.getElementById('battleStartBtn');
+  const stopBtn  = document.getElementById('battleStopBtn');
+  startBtn.textContent = '▶ 決戦再開';
+  startBtn.classList.remove('running');
+  stopBtn.style.display = 'none';
+
+  document.getElementById('timelineWrap').style.display = 'none';
+}
+
+function updateTimeline() {
+  const now = Date.now();
+  const utcNowMs = now; // Date.now() はUTC
+  const endMs = battleStartUTCMs + 5 * 60 * 60 * 1000;
+  const elapsedMs = utcNowMs - battleStartUTCMs;
+  const remainMs = endMs - utcNowMs;
+
+  const pct = Math.min(100, Math.max(0, (elapsedMs / (5 * 60 * 60 * 1000)) * 100));
+  document.getElementById('timelineBar').style.width = pct + '%';
+
+  const toHM = ms => {
+    if (ms < 0) return '00:00';
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    return `${h}:${String(m).padStart(2,'0')}`;
+  };
+
+  document.getElementById('tlElapsed').textContent = t('tlElapsed') + toHM(elapsedMs);
+
+  const utcNow = new Date(utcNowMs);
+  document.getElementById('tlNowUTC').textContent =
+    String(utcNow.getUTCHours()).padStart(2,'0') + ':' + String(utcNow.getUTCMinutes()).padStart(2,'0');
+  document.getElementById('tlRemain').textContent = toHM(remainMs);
+}
+
+function checkPetExpiry() {
+  const now = Date.now();
+  let changed = false;
+  for (const key in petState) {
+    const s = petState[key];
+    if (s.status === 'active' && s.activatedAt && now - s.activatedAt >= PET_DURATION_MS) {
+      s.status = 'expired';
+      changed = true;
+    }
+  }
+  if (changed) renderGrid();
+}
+
+// ===== セルタップ（決戦モード） =====
+function tapCellBattle(r, c) {
+  
+
+  const cur = getPetStatus(r, c);
+  if (cur.status === 'none') {
+    const now = Date.now();
+    setPetStatus(r, c, 'active', now);
+    
+  } else if (cur.status === 'active') {
+    
+    setPetStatus(r, c, 'none', null);
+  } else if (cur.status === 'expired') {
+    setPetStatus(r, c, 'none', null);
+  }
+  renderGrid();
+}
+
+// ===== グリッド描画 =====
+function renderGrid() {
+  const table = document.getElementById('mainGrid');
+  table.innerHTML = '';
+
+  for (let r = 0; r < ROWS; r++) {
+    const tr = document.createElement('tr');
+    for (let c = 0; c < COLS; c++) {
+      const cell = grid[r][c];
+      const td = document.createElement('td');
+
+      if (cell.type === 'empty') {
+        td.className = 'empty';
+      } else if (cell.type === 'col-label') {
+        td.className = 'col-label';
+      } else if (cell.type === 'gate') {
+        td.className = 'gate';
+        td.textContent = cell.label;
+      } else if (cell.type === 'city-tl') {
+        td.className = 'city';
+        td.rowSpan = 2; td.colSpan = 2;
+        td.textContent = '太陽城';
+        tr.appendChild(td);
+        continue;
+      } else if (['city-tr','city-bl','city-br'].includes(cell.type)) {
+        continue;
+      } else if (cell.type === 'inner') {
+        td.className = 'inner';
+        if (appMode === 'test') {
+          const inp = document.createElement('input');
+          inp.className = 'player-input';
+          inp.placeholder = t('inputName');
+          inp.value = playerNames[`${r},${c}`] || '';
+          inp.addEventListener('input', e => { playerNames[`${r},${c}`] = e.target.value; });
+          td.appendChild(inp);
+        } else {
+          const disp = document.createElement('span');
+          disp.className = 'player-display';
+          disp.textContent = playerNames[`${r},${c}`] || '';
+          td.appendChild(disp);
+        }
+      } else if (cell.type === 'cell') {
+        if (appMode === 'test') {
+          // --- テストモード ---
+          td.className = 'cell';
+          const mode = getTestMode(r, c);
+          const boostVal = getBoostTime(r, c);
+          const val = mode === 'boost' ? boostVal : cell.normal;
+
+          const span = document.createElement('span');
+          span.className = `time-val ${mode}`;
+          span.textContent = val + t('secUnit');
+          td.appendChild(span);
+
+          const inp = document.createElement('input');
+          inp.className = 'player-input';
+          inp.placeholder = t('inputName');
+          inp.value = playerNames[`${r},${c}`] || '';
+          inp.addEventListener('input', e => { playerNames[`${r},${c}`] = e.target.value; });
+          td.appendChild(inp);
+
+          // ペットレベル選択
+          const sel = document.createElement('select');
+          sel.className = 'pet-level-select';
+          for (let lv = 1; lv <= 8; lv++) {
+            const opt = document.createElement('option');
+            opt.value = lv;
+            opt.textContent = `Lv${lv}`;
+            if ((petLevels[`${r},${c}`] || 8) === lv) opt.selected = true;
+            sel.appendChild(opt);
+          }
+          sel.addEventListener('change', e => {
+            petLevels[`${r},${c}`] = parseInt(e.target.value);
+            renderGrid();
+          });
+          td.appendChild(sel);
+
+          // 実測値上書き入力欄
+          const ovr = document.createElement('input');
+          ovr.className = 'player-input';
+          ovr.placeholder = t('inputMeasured');
+          ovr.type = 'number';
+          ovr.min = 1;
+          ovr.style.color = '#f0c040';
+          ovr.value = boostOverrides[`${r},${c}`] || '';
+          ovr.addEventListener('input', e => {
+            const v = parseInt(e.target.value);
+            if (v > 0) { boostOverrides[`${r},${c}`] = v; }
+            else { delete boostOverrides[`${r},${c}`]; }
+            renderGrid();
+          });
+          td.appendChild(ovr);
+
+          td.addEventListener('click', e => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+            const cur = getTestMode(r, c);
+            cellModes[`${r},${c}`] = cur === 'normal' ? 'boost' : 'normal';
+            renderGrid();
+          });
+
+        } else {
+          // --- 決戦モード ---
+          const pet = getPetStatus(r, c);
+          let cellClass = 'cell';
+          if (pet.status === 'active')  cellClass += ' pet-active';
+          else if (pet.status === 'expired') cellClass += ' pet-expired';
+          td.className = cellClass;
+
+          // 行軍時間（実測値優先、なければレベル別計算）
+          const boostTime = getBoostTime(r, c);
+          const timeVal = pet.status === 'active' ? boostTime : cell.normal;
+          const timeMode = pet.status === 'active' ? 'boost' : 'normal';
+          const timeSpan = document.createElement('span');
+          timeSpan.className = `time-val ${timeMode}`;
+          timeSpan.textContent = timeVal + t('secUnit');
+          td.appendChild(timeSpan);
+
+          // ペットスキルステータス
+          const petSpan = document.createElement('span');
+          petSpan.className = `pet-status s-${pet.status}`;
+          if (pet.status === 'none')    petSpan.textContent = t('petStatusNone');
+          if (pet.status === 'active')  petSpan.textContent = t('petStatusActive');
+          if (pet.status === 'expired') petSpan.textContent = t('petStatusExpired');
+          td.appendChild(petSpan);
+
+          // アクティブ中：残り時間表示
+          if (pet.status === 'active' && pet.activatedAt) {
+            const remain = PET_DURATION_MS - (Date.now() - pet.activatedAt);
+            const h = Math.floor(remain / 3600000);
+            const m = Math.floor((remain % 3600000) / 60000);
+            const timerSpan = document.createElement('span');
+            timerSpan.className = 'pet-timer';
+            timerSpan.textContent = `${t('petRemain')}${h}h${String(m).padStart(2,'0')}m`;
+            td.appendChild(timerSpan);
+          }
+
+          // 名前表示
+          const nameDisp = document.createElement('span');
+          nameDisp.className = 'player-display';
+          nameDisp.textContent = playerNames[`${r},${c}`] || '';
+          td.appendChild(nameDisp);
+
+          td.addEventListener('click', () => tapCellBattle(r, c));
+        }
+      }
+
+      tr.appendChild(td);
+    }
+    table.appendChild(tr);
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ===== 多言語対応 =====
+let currentLang = 'ja';
+
+const I18N = {
+  ja: {
+    appTitle: '太陽城 行軍時間マップ',
+    subtitleDraft: '下書きモード：名前の入力・行軍時間の確認',
+    subtitleBattle: '決戦モード：ペットスキル状況をリアルタイム管理',
+    modeDraft: '📝 下書きモード',
+    modeBattle: '⚔ 決戦モード',
+    infoPanelTitle: '⚔ 決戦情報',
+    secUnit: '秒',
+    modeLabelPrefix: '現在: ',
+    infoServer: '自サーバー番号',
+    infoEnemy: '対戦相手',
+    infoDate: '決戦日時（UTC）',
+    infoWebhook: 'Discord Webhook URL',
+    infoWebhookNote: '（構成の保存・読み込みと連動して管理されます）',
+    infoWebhookClear: '🗑 クリア',
+    infoSupabaseUrl: 'Supabase URL',
+    infoSupabaseUrlNote: '（名前・レベルの保存に使用）',
+    infoSupabaseKey: 'Supabase Anonymous API Key',
+    infoPassword: '保存・読み込みパスワード',
+    infoPasswordNote: '（同盟メンバーに共有してください）',
+    btnSave: '💾 構成を保存',
+    btnLoad: '📥 構成を読み込み',
+    summaryPlaceholder: '決戦情報を入力すると、ここに表示されます',
+    summaryServer: 'サーバー：',
+    summaryVs: 'vs',
+    summaryDate: '決戦日時：',
+    legendNoPet: 'ペットスキルなし（通常）',
+    legendPet: 'ペットスキルあり',
+    globalToggle: '全マス切り替え',
+    modeNoPet: 'ペットスキルなし',
+    modePet: 'ペットスキルあり',
+    draftNote1: '💡 ここで入力した各マスの名前は決戦モードにそのまま反映されます',
+    draftNote2: '🐆 決戦前に各集結リーダーのユキヒョウスキルレベルを各マスで設定してください（デフォルト：Lv8）',
+    countdownLabel: '⏱ カウントダウン開始秒数：',
+    countdownUnit: '秒前から',
+    petLegendNone: 'ペットスキルなし',
+    petLegendActive: 'ペットスキルあり（2h）',
+    petLegendExpired: 'ペットスキル使用済',
+    battleStart: '▶ 決戦開始',
+    battleResume: '▶ 決戦再開',
+    battleRunning: '⚔ 決戦進行中',
+    battleStop: '⏸ 止める',
+    renngekiSelecting: '⚡ 選択中...',
+    reportBtn: '📊 レポート',
+    renngekiConfirm: 'この組み合わせで連撃',
+    renngekiCancel: 'キャンセル',
+    renngekiTitle: '⚡ 連撃管理',
+    renngekiSetTitle: '⚡ 第',
+    renngekiSetSuffix: '連撃',
+    renngekiDelete: '✕ 削除',
+    renngekiAnchor: '🚩 最初に開始',
+    renngekiDelay: '⏱ +',
+    renngekiDelaySuffix: '秒後',
+    renngekiCopy: '📋 コピー',
+    renngekiCopied: '✅ コピーしました',
+    renngekiCount: '▶ カウント開始',
+    renngekiDiscord: '📨 Discordに送信',
+    petStatusNone: 'スキルなし',
+    petStatusActive: 'スキルあり',
+    petStatusExpired: '使用済',
+    petRemain: '残',
+    inputName: '名前',
+    inputMeasured: '実測(秒)',
+    counterStop: '✕ 中止',
+    counterNow: '🔔 今！',
+    counterDone: '✅',
+    counterWait: '⏳',
+    counterRemain: 'あと',
+    counterSec: '秒',
+    counterFirst: '最初',
+    counterDelay: '+',
+    reportTitle: '📊 決戦レポート',
+    reportClose: '✕',
+    reportRenngeki: '⚡ 連撃記録',
+    reportPet: '🟢 ペットスキル使用記録',
+    reportNone: '記録なし',
+    reportCountStart: 'UTC にカウント開始',
+    reportCopy: '📋 テキストをコピー',
+    reportCopied: '✅ コピーしました',
+    reportSend: '📨 Discordに送信',
+    reportSending: '送信中...',
+    reportSent: '✅ 送信完了',
+    discordRenngekiTitle: '⚔️ 【第',
+    discordRenngekiSuffix: '連撃】⚔️',
+    discordFirst: '00秒で集結開始',
+    discordDelay: '秒後に集結開始',
+    reportHeader: '📊 【決戦レポート】',
+    reportServerLabel: 'サーバー：',
+    reportVs: 'vs',
+    reportDateLabel: '決戦日時：',
+    reportRenngekiSection: '【連撃記録】',
+    reportRenngekiNone: 'なし',
+    reportPetSection: '【ペットスキル使用記録】',
+    reportPetNone: 'なし',
+    reportPetUsing: '使用中',
+    tlStart: 'UTC 12:00 開始',
+    tlEnd: 'UTC 17:00 終了',
+    tlElapsed: '経過 ',
+    tlNow: '現在UTC: ',
+    tlRemain: '残り: ',
+    manualBtn: '📄 使用手順書',
+  },
+  en: {
+    appTitle: 'Solar Castle March Time Map',
+    subtitleDraft: 'Draft Mode: Enter names & check march times',
+    subtitleBattle: 'Battle Mode: Real-time pet skill management',
+    modeDraft: '📝 Draft Mode',
+    modeBattle: '⚔ Battle Mode',
+    infoPanelTitle: '⚔ Battle Info',
+    secUnit: 's',
+    modeLabelPrefix: 'Current: ',
+    infoServer: 'Server No.',
+    infoEnemy: 'Opponent',
+    infoDate: 'Battle Time (UTC)',
+    infoWebhook: 'Discord Webhook URL',
+    infoWebhookNote: '(Managed with save/load)',
+    infoWebhookClear: '🗑 Clear',
+    infoSupabaseUrl: 'Supabase URL',
+    infoSupabaseUrlNote: '(Used for saving data)',
+    infoSupabaseKey: 'Supabase Anonymous API Key',
+    infoPassword: 'Save/Load Password',
+    infoPasswordNote: '(Share with alliance members)',
+    btnSave: '💾 Save Config',
+    btnLoad: '📥 Load Config',
+    summaryPlaceholder: 'Enter battle info to display here',
+    summaryServer: 'Server: ',
+    summaryVs: 'vs',
+    summaryDate: 'Battle: ',
+    legendNoPet: 'No Pet Skill (Normal)',
+    legendPet: 'Pet Skill Active',
+    globalToggle: 'Toggle All',
+    modeNoPet: 'No Pet Skill',
+    modePet: 'Pet Skill Active',
+    draftNote1: '💡 Names entered here will be reflected in Battle Mode',
+    draftNote2: '🐆 Set each rally leader\'s Snowleopard skill level before battle (Default: Lv8)',
+    countdownLabel: '⏱ Countdown starts: ',
+    countdownUnit: 'sec before',
+    petLegendNone: 'No Pet Skill',
+    petLegendActive: 'Pet Skill Active (2h)',
+    petLegendExpired: 'Pet Skill Used',
+    battleStart: '▶ Start Battle',
+    battleResume: '▶ Resume Battle',
+    battleRunning: '⚔ Battle in Progress',
+    battleStop: '⏸ Pause',
+    renngekiSelecting: '⚡ Selecting...',
+    reportBtn: '📊 Report',
+    renngekiConfirm: 'Set Combo',
+    renngekiCancel: 'Cancel',
+    renngekiTitle: '⚡ Combo Manager',
+    renngekiSetTitle: '⚡ Combo #',
+    renngekiSetSuffix: '',
+    renngekiDelete: '✕ Delete',
+    renngekiAnchor: '🚩 Start First',
+    renngekiDelay: '⏱ +',
+    renngekiDelaySuffix: 's later',
+    renngekiCopy: '📋 Copy',
+    renngekiCopied: '✅ Copied!',
+    renngekiCount: '▶ Start Count',
+    renngekiDiscord: '📨 Send to Discord',
+    petStatusNone: 'No Skill',
+    petStatusActive: 'Skill Active',
+    petStatusExpired: 'Used',
+    petRemain: 'Left ',
+    inputName: 'Name',
+    inputMeasured: 'Actual(s)',
+    counterStop: '✕ Stop',
+    counterNow: '🔔 NOW!',
+    counterDone: '✅',
+    counterWait: '⏳',
+    counterRemain: 'in ',
+    counterSec: 's',
+    counterFirst: 'First',
+    counterDelay: '+',
+    reportTitle: '📊 Battle Report',
+    reportClose: '✕',
+    reportRenngeki: '⚡ Combo Log',
+    reportPet: '🟢 Pet Skill Log',
+    reportNone: 'No records',
+    reportCountStart: 'UTC Count started',
+    reportCopy: '📋 Copy Text',
+    reportCopied: '✅ Copied!',
+    reportSend: '📨 Send to Discord',
+    reportSending: 'Sending...',
+    reportSent: '✅ Sent!',
+    discordRenngekiTitle: '⚔️ 【Combo #',
+    discordRenngekiSuffix: '】⚔️',
+    discordFirst: '00s - Start rally first',
+    discordDelay: 's later - Start rally',
+    reportHeader: '📊 【Battle Report】',
+    reportServerLabel: 'Server: ',
+    reportVs: 'vs',
+    reportDateLabel: 'Battle Time: ',
+    reportRenngekiSection: '【Combo Log】',
+    reportRenngekiNone: 'None',
+    reportPetSection: '【Pet Skill Log】',
+    reportPetNone: 'None',
+    reportPetUsing: 'Active',
+    tlStart: 'UTC 12:00 Start',
+    tlEnd: 'UTC 17:00 End',
+    tlElapsed: 'Elapsed ',
+    tlNow: 'UTC Now: ',
+    tlRemain: 'Remain: ',
+    manualBtn: '📄 Manual',
+  },
+  zh: {
+    appTitle: '太阳城行军时间地图',
+    subtitleDraft: '草稿模式：输入名称并确认行军时间',
+    subtitleBattle: '决战模式：实时管理宠物技能',
+    modeDraft: '📝 草稿模式',
+    modeBattle: '⚔ 决战模式',
+    infoPanelTitle: '⚔ 决战信息',
+    secUnit: '秒',
+    modeLabelPrefix: '当前: ',
+    infoServer: '服务器编号',
+    infoEnemy: '对战对手',
+    infoDate: '决战时间（UTC）',
+    infoWebhook: 'Discord Webhook URL',
+    infoWebhookNote: '（与配置保存/读取联动管理）',
+    infoWebhookClear: '🗑 清除',
+    infoSupabaseUrl: 'Supabase URL',
+    infoSupabaseUrlNote: '（用于保存数据）',
+    infoSupabaseKey: 'Supabase 匿名API密钥',
+    infoPassword: '保存/读取密码',
+    infoPasswordNote: '（请分享给联盟成员）',
+    btnSave: '💾 保存配置',
+    btnLoad: '📥 读取配置',
+    summaryPlaceholder: '输入决战信息后将在此显示',
+    summaryServer: '服务器：',
+    summaryVs: 'vs',
+    summaryDate: '决战时间：',
+    legendNoPet: '无宠物技能（普通）',
+    legendPet: '有宠物技能',
+    globalToggle: '全部切换',
+    modeNoPet: '无宠物技能',
+    modePet: '有宠物技能',
+    draftNote1: '💡 此处输入的名称将直接反映到决战模式',
+    draftNote2: '🐆 决战前请为每个集结队长设置雪豹技能等级（默认：Lv8）',
+    countdownLabel: '⏱ 倒计时开始：',
+    countdownUnit: '秒前',
+    petLegendNone: '无宠物技能',
+    petLegendActive: '有宠物技能（2h）',
+    petLegendExpired: '技能已使用',
+    battleStart: '▶ 开始决战',
+    battleResume: '▶ 继续决战',
+    battleRunning: '⚔ 决战进行中',
+    battleStop: '⏸ 暂停',
+    renngekiSelecting: '⚡ 选择中...',
+    reportBtn: '📊 报告',
+    renngekiConfirm: '确认连击',
+    renngekiCancel: '取消',
+    renngekiTitle: '⚡ 连击管理',
+    renngekiSetTitle: '⚡ 第',
+    renngekiSetSuffix: '连击',
+    renngekiDelete: '✕ 删除',
+    renngekiAnchor: '🚩 最先开始',
+    renngekiDelay: '⏱ +',
+    renngekiDelaySuffix: '秒后',
+    renngekiCopy: '📋 复制',
+    renngekiCopied: '✅ 已复制',
+    renngekiCount: '▶ 开始倒计时',
+    renngekiDiscord: '📨 发送到Discord',
+    petStatusNone: '无技能',
+    petStatusActive: '技能激活',
+    petStatusExpired: '已使用',
+    petRemain: '剩余',
+    inputName: '名称',
+    inputMeasured: '实测(秒)',
+    counterStop: '✕ 停止',
+    counterNow: '🔔 现在！',
+    counterDone: '✅',
+    counterWait: '⏳',
+    counterRemain: '还有',
+    counterSec: '秒',
+    counterFirst: '最先',
+    counterDelay: '+',
+    reportTitle: '📊 决战报告',
+    reportClose: '✕',
+    reportRenngeki: '⚡ 连击记录',
+    reportPet: '🟢 宠物技能使用记录',
+    reportNone: '无记录',
+    reportCountStart: 'UTC 开始倒计时',
+    reportCopy: '📋 复制文本',
+    reportCopied: '✅ 已复制',
+    reportSend: '📨 发送到Discord',
+    reportSending: '发送中...',
+    reportSent: '✅ 已发送',
+    discordRenngekiTitle: '⚔️ 【第',
+    discordRenngekiSuffix: '连击】⚔️',
+    discordFirst: '00秒 集结最先开始',
+    discordDelay: '秒后 开始集结',
+    reportHeader: '📊 【决战报告】',
+    reportServerLabel: '服务器：',
+    reportVs: 'vs',
+    reportDateLabel: '决战时间：',
+    reportRenngekiSection: '【连击记录】',
+    reportRenngekiNone: '无',
+    reportPetSection: '【宠物技能使用记录】',
+    reportPetNone: '无',
+    reportPetUsing: '使用中',
+    tlStart: 'UTC 12:00 开始',
+    tlEnd: 'UTC 17:00 结束',
+    tlElapsed: '已过 ',
+    tlNow: '当前UTC: ',
+    tlRemain: '剩余: ',
+    manualBtn: '📄 使用手册',
+  },
+  ko: {
+    appTitle: '태양성 행군 시간 맵',
+    subtitleDraft: '초안 모드：이름 입력 및 행군 시간 확인',
+    subtitleBattle: '결전 모드：펫 스킬 실시간 관리',
+    modeDraft: '📝 초안 모드',
+    modeBattle: '⚔ 결전 모드',
+    infoPanelTitle: '⚔ 결전 정보',
+    secUnit: '초',
+    modeLabelPrefix: '현재: ',
+    infoServer: '서버 번호',
+    infoEnemy: '상대방',
+    infoDate: '결전 시간（UTC）',
+    infoWebhook: 'Discord Webhook URL',
+    infoWebhookNote: '（설정 저장/불러오기와 연동）',
+    infoWebhookClear: '🗑 지우기',
+    infoSupabaseUrl: 'Supabase URL',
+    infoSupabaseUrlNote: '（데이터 저장에 사용）',
+    infoSupabaseKey: 'Supabase 익명 API 키',
+    infoPassword: '저장/불러오기 비밀번호',
+    infoPasswordNote: '（동맹원과 공유하세요）',
+    btnSave: '💾 설정 저장',
+    btnLoad: '📥 설정 불러오기',
+    summaryPlaceholder: '결전 정보를 입력하면 여기에 표시됩니다',
+    summaryServer: '서버：',
+    summaryVs: 'vs',
+    summaryDate: '결전 시간：',
+    legendNoPet: '펫 스킬 없음（보통）',
+    legendPet: '펫 스킬 있음',
+    globalToggle: '전체 전환',
+    modeNoPet: '펫 스킬 없음',
+    modePet: '펫 스킬 있음',
+    draftNote1: '💡 여기서 입력한 이름은 결전 모드에 그대로 반영됩니다',
+    draftNote2: '🐆 결전 전에 각 집결 리더의 설표 스킬 레벨을 설정하세요（기본：Lv8）',
+    countdownLabel: '⏱ 카운트다운 시작：',
+    countdownUnit: '초 전',
+    petLegendNone: '펫 스킬 없음',
+    petLegendActive: '펫 스킬 있음（2h）',
+    petLegendExpired: '펫 스킬 사용 완료',
+    battleStart: '▶ 결전 시작',
+    battleResume: '▶ 결전 재개',
+    battleRunning: '⚔ 결전 진행 중',
+    battleStop: '⏸ 일시 정지',
+    renngekiSelecting: '⚡ 선택 중...',
+    reportBtn: '📊 리포트',
+    renngekiConfirm: '연격 확정',
+    renngekiCancel: '취소',
+    renngekiTitle: '⚡ 연격 관리',
+    renngekiSetTitle: '⚡ 제',
+    renngekiSetSuffix: '연격',
+    renngekiDelete: '✕ 삭제',
+    renngekiAnchor: '🚩 먼저 시작',
+    renngekiDelay: '⏱ +',
+    renngekiDelaySuffix: '초 후',
+    renngekiCopy: '📋 복사',
+    renngekiCopied: '✅ 복사됨',
+    renngekiCount: '▶ 카운트 시작',
+    renngekiDiscord: '📨 Discord로 전송',
+    petStatusNone: '스킬 없음',
+    petStatusActive: '스킬 있음',
+    petStatusExpired: '사용 완료',
+    petRemain: '남은 ',
+    inputName: '이름',
+    inputMeasured: '실측(초)',
+    counterStop: '✕ 중지',
+    counterNow: '🔔 지금！',
+    counterDone: '✅',
+    counterWait: '⏳',
+    counterRemain: '후 ',
+    counterSec: '초',
+    counterFirst: '먼저',
+    counterDelay: '+',
+    reportTitle: '📊 결전 리포트',
+    reportClose: '✕',
+    reportRenngeki: '⚡ 연격 기록',
+    reportPet: '🟢 펫 스킬 사용 기록',
+    reportNone: '기록 없음',
+    reportCountStart: 'UTC 카운트 시작',
+    reportCopy: '📋 텍스트 복사',
+    reportCopied: '✅ 복사됨',
+    reportSend: '📨 Discord로 전송',
+    reportSending: '전송 중...',
+    reportSent: '✅ 전송됨',
+    discordRenngekiTitle: '⚔️ 【제',
+    discordRenngekiSuffix: '연격】⚔️',
+    discordFirst: '00초 집결 먼저 시작',
+    discordDelay: '초 후 집결 시작',
+    reportHeader: '📊 【결전 리포트】',
+    reportServerLabel: '서버：',
+    reportVs: 'vs',
+    reportDateLabel: '결전 시간：',
+    reportRenngekiSection: '【연격 기록】',
+    reportRenngekiNone: '없음',
+    reportPetSection: '【펫 스킬 사용 기록】',
+    reportPetNone: '없음',
+    reportPetUsing: '사용 중',
+    tlStart: 'UTC 12:00 시작',
+    tlEnd: 'UTC 17:00 종료',
+    tlElapsed: '경과 ',
+    tlNow: '현재UTC: ',
+    tlRemain: '남은: ',
+    manualBtn: '📄 사용 설명서',
+  }
+};
+
+function t(key) {
+  return (I18N[currentLang] && I18N[currentLang][key]) || I18N['ja'][key] || key;
+}
+
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('taiyojo_lang', lang);
+  // ボタンのactive更新
+  ['ja','en','zh','ko'].forEach(l => {
+    const btn = document.getElementById(`lang-${l}`);
+    if (btn) btn.className = 'lang-btn' + (l === lang ? ' active' : '');
+  });
+  applyLang();
+  renderGrid();
+}
+
+function applyLang() {
+  const mode = appMode;
+  // タイトル・サブタイトル
+  const titleEl = document.getElementById('appTitle');
+  if (titleEl) titleEl.textContent = t('appTitle');
+  document.getElementById('appSubtitle').textContent =
+    mode === 'test' ? t('subtitleDraft') : t('subtitleBattle');
+
+  // モード切替ボタン
+  document.getElementById('btnTest').textContent = t('modeDraft');
+  document.getElementById('btnBattle').textContent = t('modeBattle');
+
+  // 決戦情報パネルのラベル
+  const labels = {
+    'label-server': 'infoServer', 'label-enemy': 'infoEnemy',
+    'label-date': 'infoDate', 'label-webhook': 'infoWebhook',
+    'label-supabase-url': 'infoSupabaseUrl', 'label-supabase-key': 'infoSupabaseKey',
+    'label-password': 'infoPassword',
+  };
+  Object.entries(labels).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = t(key);
+  });
+
+  // ボタン類
+  const btns = {
+    'btn-save': 'btnSave', 'btn-load': 'btnLoad',
+    'btn-webhook-clear': 'infoWebhookClear',
+    'battleStartBtn': null, 'battleStopBtn': 'battleStop',
+    'manual-btn': 'manualBtn',
+  };
+  Object.entries(btns).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (!el || !key) return;
+    el.textContent = t(key);
+  });
+
+  const legendNoPet = document.getElementById('legend-no-pet');
+  const legendPet = document.getElementById('legend-pet');
+  if (legendNoPet) legendNoPet.textContent = t('legendNoPet');
+  if (legendPet) legendPet.textContent = t('legendPet');
+
+  // 決戦情報タイトル
+  const infoPanelTitleEl = document.getElementById('info-panel-title');
+  if (infoPanelTitleEl) infoPanelTitleEl.textContent = t('infoPanelTitle');
+
+  // modeLabel（現在：〜）
+  updateToggleBtn();
+  const startBtn = document.getElementById('battleStartBtn');
+  if (startBtn) {
+    if (battleRunning) startBtn.textContent = t('battleRunning');
+    else startBtn.textContent = battleStartUTCMs ? t('battleResume') : t('battleStart');
+  }
+
+  // 連撃ボタン
+  
+
+  // レポートボタン
+  
+
+  // タイムライン
+  const tlS = document.getElementById('tl-start');
+  const tlE = document.getElementById('tl-end');
+  if (tlS) tlS.textContent = t('tlStart');
+  if (tlE) tlE.textContent = t('tlEnd');
+
+  // 注記
+  const note1 = document.getElementById('draft-note1');
+  const note2 = document.getElementById('draft-note2');
+  if (note1) note1.textContent = t('draftNote1');
+  if (note2) note2.textContent = t('draftNote2');
+
+  // カウントダウン
+  
+
+  const tlNowLabel = document.getElementById('tl-now-label');
+  const tlRemainLabel = document.getElementById('tl-remain-label');
+  if (tlNowLabel) tlNowLabel.textContent = t('tlNow');
+  if (tlRemainLabel) tlRemainLabel.textContent = t('tlRemain');
+
+  // サマリーバーを更新
+  updateSummary();
+
+  // 連撃セット再描画
+}
+
+// ===== 多言語対応終わり =====
+const battleLog = {
+  renngeki: [],   // [{setId, idx, startedAtUTC, cells:[{name,hasPet}]}]
+  pet: [],        // [{name, key, activatedAtUTC, expiredAtUTC}]
+};
+
+function utcHHMM(ms) {
+  const d = new Date(ms);
+  return String(d.getUTCHours()).padStart(2,'0') + ':' + String(d.getUTCMinutes()).padStart(2,'0');
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ===== Discord Webhook送信 =====
+
+
+
+
+
+
+
+
+
+
+
+
+// ===== サマリーバー =====
+function updateSummary() {
+  const alliance = document.getElementById('allianceName').value.trim();
+  const enemy = document.getElementById('enemyName').value.trim();
+  const dateVal = document.getElementById('battleDate').value;
+  const bar = document.getElementById('summaryBar');
+
+  if (!alliance && !enemy && !dateVal) {
+    bar.innerHTML = '<span style="color:#3a3a5a;font-size:0.75rem;">決戦情報を入力すると、ここに表示されます</span>';
+    return;
+  }
+  let parts = [];
+  if (alliance) parts.push(`<span class="s-label">サーバー：</span><span class="s-item">${alliance}</span>`);
+  if (enemy)    parts.push(`<span class="s-label">vs</span><span class="s-item">${enemy}</span>`);
+  if (dateVal) {
+    const [datePart, timePart] = dateVal.split('T');
+    const [year, month, day] = datePart.split('-');
+    const [hour, minute] = timePart.split(':');
+    parts.push(`<span class="s-label">決戦日時：</span><span class="s-item">${year}/${month}/${day} ${hour}:${minute} UTC</span>`);
+  }
+  bar.innerHTML = '🏰 ' + parts.join('<span class="s-sep"> ｜ </span>');
+}
+
+// ペットの残り時間表示を1分ごとに更新
+setInterval(() => {
+  if (appMode === 'battle') renderGrid();
+}, 60000);
+
+
+
+
+
+
+
+
+// 言語設定を復元
+const savedLang = localStorage.getItem('taiyojo_lang') || 'ja';
+currentLang = savedLang;
+['ja','en','zh','ko'].forEach(l => {
+  const btn = document.getElementById(`lang-${l}`);
+  if (btn) btn.className = 'lang-btn' + (l === savedLang ? ' active' : '');
+});
+applyLang();
+renderGrid();
+</script>
+</body>
+</html>

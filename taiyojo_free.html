@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>太陽城 行軍時間マップ</title>
+<title>城 行軍時間マップ</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -408,7 +408,7 @@
   <button class="lang-btn" id="lang-zh" onclick="setLang('zh')">🇨🇳 中文</button>
   <button class="lang-btn" id="lang-ko" onclick="setLang('ko')">🇰🇷 한국어</button>
 </div>
-<h1 id="appTitle">太陽城 行軍時間マップ <span style="font-size:0.55em;color:#2ecc71;vertical-align:middle;">FREE</span></h1>
+<h1 id="appTitle">城 行軍時間マップ <span style="font-size:0.55em;color:#2ecc71;vertical-align:middle;">FREE</span></h1>
 <p class="subtitle" id="appSubtitle">下書きモード：名前の入力・行軍時間の確認</p>
 <p style="font-size:0.7rem;color:#f0c040;margin-bottom:8px;letter-spacing:0.05em;">⚠️ これはトライアル版です。全ての機能をご利用の場合はお問い合わせください。</p>
 
@@ -799,7 +799,7 @@ function renderGrid() {
       } else if (cell.type === 'city-tl') {
         td.className = 'city';
         td.rowSpan = 2; td.colSpan = 2;
-        td.textContent = '太陽城';
+        td.textContent = '城';
         tr.appendChild(td);
         continue;
       } else if (['city-tr','city-bl','city-br'].includes(cell.type)) {
@@ -960,7 +960,7 @@ let currentLang = 'ja';
 
 const I18N = {
   ja: {
-    appTitle: '太陽城 行軍時間マップ',
+    appTitle: '城 行軍時間マップ',
     subtitleDraft: '下書きモード：名前の入力・行軍時間の確認',
     subtitleBattle: '決戦モード：ペットスキル状況をリアルタイム管理',
     modeDraft: '📝 下書きモード',
